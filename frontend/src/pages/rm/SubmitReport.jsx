@@ -52,7 +52,7 @@ const SubmitReport = () => {
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Submit Daily Report</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">RM Daily Tracker — fill commitments in the morning and update KPIs at end of day.</p>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Counsellor Daily Tracker — fill commitments in the morning and update KPIs at end of day.</p>
       </div>
 
       {error && (
@@ -63,11 +63,11 @@ const SubmitReport = () => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* A. RM Details */}
+        {/* A. Counsellor Details */}
         <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
           {/* Coloured header band */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-500 px-6 py-3 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary-100">Relationship Manager Details</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary-100">Counsellor Details</p>
             <span className="text-xs text-primary-200">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
           </div>
 

@@ -6,16 +6,12 @@ import Layout from './components/common/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
-import Directory from './pages/Directory';
 import SubmitReport from './pages/rm/SubmitReport';
 import MyReports from './pages/rm/MyReports';
 import Performance from './pages/rm/Performance';
-import TeamDashboard from './pages/teamlead/TeamDashboard';
-import EmployeeReports from './pages/teamlead/EmployeeReports';
-import TeamTargets from './pages/teamlead/TeamTargets';
 import OrgDashboard from './pages/hod/OrgDashboard';
 import UserManagement from './pages/hod/UserManagement';
-import ZoneManagement from './pages/hod/ZoneManagement';
+import DepartmentManagement from './pages/hod/DepartmentManagement';
 import AllReports from './pages/hod/AllReports';
 import ReportLogs from './pages/hod/ReportLogs';
 import TargetManagement from './pages/hod/TargetManagement';
@@ -68,60 +64,47 @@ const App = () => {
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/directory" element={<Directory />} />
 
-          {/* RM Routes */}
+          {/* Counsellor Routes */}
           <Route
             path="/submit-report"
-            element={<ProtectedRoute allowedRoles={['RM']}><SubmitReport /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={['COUNSELLOR']}><SubmitReport /></ProtectedRoute>}
           />
           <Route
             path="/my-reports"
-            element={<ProtectedRoute allowedRoles={['RM']}><MyReports /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={['COUNSELLOR']}><MyReports /></ProtectedRoute>}
           />
           <Route
             path="/my-performance"
-            element={<ProtectedRoute allowedRoles={['RM']}><Performance /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={['COUNSELLOR']}><Performance /></ProtectedRoute>}
           />
 
-          {/* Team Lead Routes */}
-          <Route
-            path="/team-dashboard"
-            element={<ProtectedRoute allowedRoles={['TEAM_LEAD']}><TeamDashboard /></ProtectedRoute>}
-          />
-          <Route
-            path="/employee-reports"
-            element={<ProtectedRoute allowedRoles={['TEAM_LEAD']}><EmployeeReports /></ProtectedRoute>}
-          />
-          <Route
-            path="/team-targets"
-            element={<ProtectedRoute allowedRoles={['TEAM_LEAD']}><TeamTargets /></ProtectedRoute>}
-          />
-
-          {/* HOD Routes */}
-          <Route
-            path="/org-dashboard"
-            element={<ProtectedRoute allowedRoles={['HOD']}><OrgDashboard /></ProtectedRoute>}
-          />
-          <Route
-            path="/user-management"
-            element={<ProtectedRoute allowedRoles={['HOD']}><UserManagement /></ProtectedRoute>}
-          />
-          <Route
-            path="/zone-management"
-            element={<ProtectedRoute allowedRoles={['HOD']}><ZoneManagement /></ProtectedRoute>}
-          />
+          {/* HOD + Super Admin Routes (reports) */}
           <Route
             path="/all-reports"
-            element={<ProtectedRoute allowedRoles={['HOD']}><AllReports /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={['HOD', 'SUPER_ADMIN']}><AllReports /></ProtectedRoute>}
           />
           <Route
             path="/report-logs"
-            element={<ProtectedRoute allowedRoles={['HOD']}><ReportLogs /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={['HOD', 'SUPER_ADMIN']}><ReportLogs /></ProtectedRoute>}
+          />
+
+          {/* Super Admin Routes */}
+          <Route
+            path="/org-dashboard"
+            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><OrgDashboard /></ProtectedRoute>}
+          />
+          <Route
+            path="/user-management"
+            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><UserManagement /></ProtectedRoute>}
+          />
+          <Route
+            path="/department-management"
+            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><DepartmentManagement /></ProtectedRoute>}
           />
           <Route
             path="/target-management"
-            element={<ProtectedRoute allowedRoles={['HOD']}><TargetManagement /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><TargetManagement /></ProtectedRoute>}
           />
         </Route>
       </Route>

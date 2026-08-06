@@ -1,13 +1,13 @@
 export const ROLES = {
-  RM: 'RM',
-  TEAM_LEAD: 'TEAM_LEAD',
+  COUNSELLOR: 'COUNSELLOR',
   HOD: 'HOD',
+  SUPER_ADMIN: 'SUPER_ADMIN',
 };
 
 export const ROLE_LABELS = {
-  RM: 'Relationship Manager',
-  TEAM_LEAD: 'Team Lead',
+  COUNSELLOR: 'Counsellor',
   HOD: 'Head of Department',
+  SUPER_ADMIN: 'Super Admin',
 };
 
 export const PERIODS = [
@@ -31,17 +31,3 @@ export const LOG_ACTION_COLORS = {
   SUBMIT_REPORT: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   MODIFY_REPORT: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
 };
-
-export const DIRECTORY_DEPARTMENTS = [
-  'B2B Leadership',
-  'West Zone',
-  'North Zone',
-  'South Zone',
-  'Assessment Team',
-  'Application Team',
-  'Communication Team',
-  'Visa Services Team',
-  'Germany Team',
-  'UK Team',
-  'UK Communication Team',
-];

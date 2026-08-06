@@ -1,12 +1,10 @@
 const DailyReport = require('../models/DailyReport');
 const User = require('../models/User');
-const Zone = require('../models/Zone');
 const AuditLog = require('../models/AuditLog');
 const Notification = require('../models/Notification');
 const { exportToExcel } = require('../services/exportService');
 const { sendReportSubmittedEmail } = require('../services/emailService');
 const { getDateRange } = require('../utils/helpers');
-const { ZONE_NOTIFY_RECIPIENTS } = require('../config/zoneNotifyRecipients');
 const {
   COUNTRIES,
   PROFILE_NUMERIC_KEYS,
@@ -17,34 +15,13 @@ const {
 // Headline count shown in lists/cards: total applications across countries.
 const applicationsCount = (tasks) => computeReportTotals(tasks).profile.applications || 0;
 
-// Notify the RM's zone Team Leads + all active HODs (in-app + email) when a report is submitted.
+// Notify all active HODs/Super Admins (in-app + email) when a report is submitted.
 // Best-effort: failures here must never fail the report submission itself.
 const notifyReportSubmitted = async (report, rm) => {
   try {
-    const recipients = [];
+    const recipients = await User.find({ role: { $in: ['HOD', 'SUPER_ADMIN'] }, isActive: true }).select('name email');
 
-    const zone = rm.zoneId ? await Zone.findById(rm.zoneId).select('name') : null;
-    const zoneTLEmails = zone ? ZONE_NOTIFY_RECIPIENTS[zone.name] : null;
-
-    if (zoneTLEmails?.length) {
-      const zoneTLs = await User.find({ email: { $in: zoneTLEmails }, isActive: true }).select('name email');
-      recipients.push(...zoneTLs);
-    } else if (rm.teamLeadId) {
-      // No zone-level mapping configured — fall back to the RM's own assigned Team Lead.
-      const tl = await User.findById(rm.teamLeadId).select('name email isActive');
-      if (tl?.isActive) recipients.push(tl);
-    }
-
-    const hods = await User.find({ role: 'HOD', isActive: true }).select('name email');
-    recipients.push(...hods);
-
-    const seen = new Set();
-    const uniqueRecipients = recipients.filter((r) => {
-      const id = r._id.toString();
-      if (seen.has(id) || id === rm._id.toString()) return false;
-      seen.add(id);
-      return true;
-    });
+    const uniqueRecipients = recipients.filter((r) => r._id.toString() !== rm._id.toString());
 
     const dateStr = new Date(report.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     const timeStr = new Date(report.createdAt).toLocaleTimeString('en-IN', {
@@ -140,53 +117,13 @@ const getMyReports = async (req, res, next) => {
   }
 };
 
-const getTeamReports = async (req, res, next) => {
-  try {
-    const { period = 'monthly', userId, page = 1, limit = 20 } = req.query;
-    const { startDate, endDate } = getDateRange(period);
-
-    let userIds;
-    if (req.user.role === 'TEAM_LEAD') {
-      const teamMembers = await User.find({ teamLeadId: req.user._id, isActive: true }).select('_id');
-      userIds = teamMembers.map((m) => m._id);
-    } else {
-      userIds = (await User.find({ isActive: true }).select('_id')).map((u) => u._id);
-    }
-
-    const filter = {
-      userId: userId ? userId : { $in: userIds },
-      date: { $gte: startDate, $lte: endDate },
-    };
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const [reports, total] = await Promise.all([
-      DailyReport.find(filter)
-        .populate('userId', 'name employeeId role zoneId')
-        .populate('modifiedBy', 'name role')
-        .sort({ date: -1 })
-        .skip(skip)
-        .limit(parseInt(limit)),
-      DailyReport.countDocuments(filter),
-    ]);
-
-    res.json({
-      success: true,
-      data: reports,
-      pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 const getAllReports = async (req, res, next) => {
   try {
-    const { period = 'monthly', userId, zoneId, teamLeadId, page = 1, limit = 20 } = req.query;
+    const { period = 'monthly', userId, departmentId, page = 1, limit = 20 } = req.query;
     const { startDate, endDate } = getDateRange(period);
 
     const userFilter = { isActive: true };
-    if (zoneId) userFilter.zoneId = zoneId;
-    if (teamLeadId) userFilter.teamLeadId = teamLeadId;
+    if (departmentId) userFilter.departmentId = departmentId;
 
     let userIds;
     if (userId) {
@@ -201,7 +138,7 @@ const getAllReports = async (req, res, next) => {
 
     const [reports, total] = await Promise.all([
       DailyReport.find(filter)
-        .populate('userId', 'name employeeId role zoneId teamLeadId')
+        .populate('userId', 'name employeeId role departmentId')
         .populate('modifiedBy', 'name role')
         .sort({ date: -1 })
         .skip(skip)
@@ -224,7 +161,7 @@ const updateReport = async (req, res, next) => {
     const report = await DailyReport.findById(req.params.id);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
 
-    if (req.user.role === 'RM') {
+    if (req.user.role === 'COUNSELLOR') {
       if (report.userId.toString() !== req.user._id.toString()) {
         return res.status(403).json({ success: false, message: 'Access denied' });
       }
@@ -234,13 +171,6 @@ const updateReport = async (req, res, next) => {
       today.setHours(0, 0, 0, 0);
       if (reportDay.getTime() !== today.getTime()) {
         return res.status(403).json({ success: false, message: 'You can only edit today\'s report' });
-      }
-    }
-
-    if (req.user.role === 'TEAM_LEAD') {
-      const reportUser = await User.findById(report.userId);
-      if (!reportUser || reportUser.teamLeadId?.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ success: false, message: 'Access denied' });
       }
     }
 
@@ -281,11 +211,8 @@ const getAnalytics = async (req, res, next) => {
     const { startDate, endDate } = getDateRange(period);
 
     let userFilter = {};
-    if (req.user.role === 'RM') {
+    if (req.user.role === 'COUNSELLOR') {
       userFilter = { _id: req.user._id };
-    } else if (req.user.role === 'TEAM_LEAD') {
-      const members = await User.find({ teamLeadId: req.user._id, isActive: true }).select('_id');
-      userFilter = { _id: { $in: members.map((m) => m._id) } };
     }
 
     const users = await User.find({ ...userFilter, isActive: true }).select('_id name employeeId');
@@ -327,18 +254,15 @@ const getAnalytics = async (req, res, next) => {
 // Aggregated KPI rollup over a date range, scoped by role (mirrors the TL Dashboard tab).
 const getTrackerSummary = async (req, res, next) => {
   try {
-    const { period = 'monthly', userId, zoneId } = req.query;
+    const { period = 'monthly', userId, departmentId } = req.query;
     const { startDate, endDate } = getDateRange(period);
 
     // Resolve which users are in scope.
     const userFilter = { isActive: true };
-    if (req.user.role === 'RM') {
+    if (req.user.role === 'COUNSELLOR') {
       userFilter._id = req.user._id;
-    } else if (req.user.role === 'TEAM_LEAD') {
-      const members = await User.find({ teamLeadId: req.user._id, isActive: true }).select('_id');
-      userFilter._id = { $in: members.map((m) => m._id) };
     }
-    if (zoneId) userFilter.zoneId = zoneId;
+    if (departmentId) userFilter.departmentId = departmentId;
     if (userId) userFilter._id = userId;
 
     const scopedUsers = await User.find(userFilter).select('_id');
@@ -402,21 +326,15 @@ const getTrackerSummary = async (req, res, next) => {
 
 const exportReports = async (req, res, next) => {
   try {
-    const { period = 'monthly', userId, zoneId, teamLeadId, format = 'xlsx' } = req.query;
+    const { period = 'monthly', userId, departmentId, format = 'xlsx' } = req.query;
     const { startDate, endDate } = getDateRange(period);
 
     const filter = { date: { $gte: startDate, $lte: endDate } };
 
-    if (req.user.role === 'TEAM_LEAD') {
-      const members = await User.find({ teamLeadId: req.user._id }).select('_id');
-      filter.userId = { $in: members.map((m) => m._id) };
-    } else if (userId) {
+    if (userId) {
       filter.userId = userId;
-    } else if (zoneId || teamLeadId) {
-      const userFilter = {};
-      if (zoneId) userFilter.zoneId = zoneId;
-      if (teamLeadId) userFilter.teamLeadId = teamLeadId;
-      const users = await User.find(userFilter).select('_id');
+    } else if (departmentId) {
+      const users = await User.find({ departmentId }).select('_id');
       filter.userId = { $in: users.map((u) => u._id) };
     }
 
@@ -445,7 +363,7 @@ const getFormTemplate = async (req, res, next) => {
   }
 };
 
-// HOD only: audit trail of report submissions/edits by RMs and Team Leads
+// HOD/SUPER_ADMIN only: audit trail of report submissions/edits
 const getReportLogs = async (req, res, next) => {
   try {
     const { period, role, performedBy, action, page = 1, limit = 25 } = req.query;
@@ -498,4 +416,4 @@ const getReportLogs = async (req, res, next) => {
   }
 };
 
-module.exports = { submitReport, getMyReports, getTeamReports, getAllReports, updateReport, getAnalytics, getTrackerSummary, exportReports, getFormTemplate, getReportLogs };
+module.exports = { submitReport, getMyReports, getAllReports, updateReport, getAnalytics, getTrackerSummary, exportReports, getFormTemplate, getReportLogs };

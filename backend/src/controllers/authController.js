@@ -1,5 +1,4 @@
 const User = require('../models/User');
-const TeamMember = require('../models/TeamMember');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../config/jwt');
 const { AppError } = require('../middleware/errorHandler');
 const cloudinary = require('../config/cloudinary');
@@ -107,7 +106,7 @@ const updateAvatar = async (req, res, next) => {
 
     // Upload new image to Cloudinary
     const result = await cloudinary.uploader.upload(avatar, {
-      folder:         'b2b-tracker/avatars',
+      folder:         'b2c-tracker/avatars',
       public_id:      `user_${req.user._id}`,
       overwrite:      true,
       transformation: [{ width: 256, height: 256, crop: 'fill', gravity: 'face', quality: 'auto' }],
@@ -118,14 +117,6 @@ const updateAvatar = async (req, res, next) => {
       { avatar: result.secure_url, avatarPublicId: result.public_id },
       { new: true, runValidators: true }
     );
-
-    // Keep the Team Directory entry for this person (matched by email) in sync
-    if (user.email) {
-      await TeamMember.updateMany(
-        { email: user.email.toLowerCase() },
-        { photo: result.secure_url }
-      );
-    }
 
     res.json({ success: true, message: 'Profile photo updated', data: user.toJSON() });
   } catch (error) {
@@ -145,14 +136,6 @@ const removeAvatar = async (req, res, next) => {
       { avatar: null, avatarPublicId: null },
       { new: true }
     );
-
-    // Clear the synced Team Directory photo too, unless HOD uploaded a dedicated photo for that entry
-    if (user.email) {
-      await TeamMember.updateMany(
-        { email: user.email.toLowerCase(), photoPublicId: { $in: [null, undefined] } },
-        { photo: null }
-      );
-    }
 
     res.json({ success: true, message: 'Profile photo removed', data: user.toJSON() });
   } catch (error) {

@@ -1,6 +1,6 @@
-# B2B Daily Task Tracking System
+# B2C Daily Task Tracking System
 
-A production-ready, login-based task tracking web application for B2B teams.
+A production-ready, login-based task tracking web application for B2C teams.
 
 ## Tech Stack
 
@@ -135,7 +135,7 @@ docker-compose up --build -d
 # Backend .env
 NODE_ENV=development
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/b2b_task_tracker
+MONGODB_URI=mongodb://localhost:27017/b2c_task_tracker
 JWT_SECRET=your_jwt_secret
 JWT_REFRESH_SECRET=your_refresh_secret
 ACCESS_TOKEN_EXPIRY=15m

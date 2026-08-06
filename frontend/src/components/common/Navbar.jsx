@@ -82,7 +82,7 @@ const Navbar = () => {
     <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
       <div>
         <h1 className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-          B2B Daily Task Tracker
+          B2C Daily Task Tracker
         </h1>
       </div>
 

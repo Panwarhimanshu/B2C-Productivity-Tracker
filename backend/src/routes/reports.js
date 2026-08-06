@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const {
-  submitReport, getMyReports, getTeamReports, getAllReports,
+  submitReport, getMyReports, getAllReports,
   updateReport, getAnalytics, getTrackerSummary, exportReports, getFormTemplate, getReportLogs,
 } = require('../controllers/reportController');
 const { authenticate } = require('../middleware/auth');
@@ -14,14 +14,13 @@ router.get('/template', getFormTemplate);
 router.get('/analytics', getAnalytics);
 router.get('/summary', getTrackerSummary);
 router.get('/my', getMyReports);
-router.get('/team', authorize('TEAM_LEAD', 'HOD'), getTeamReports);
-router.get('/all', authorize('HOD'), getAllReports);
-router.get('/logs', authorize('HOD'), getReportLogs);
-router.get('/export', authorize('TEAM_LEAD', 'HOD'), exportReports);
+router.get('/all', authorize('HOD', 'SUPER_ADMIN'), getAllReports);
+router.get('/logs', authorize('HOD', 'SUPER_ADMIN'), getReportLogs);
+router.get('/export', authorize('HOD', 'SUPER_ADMIN'), exportReports);
 
 router.post(
   '/',
-  authorize('RM'),
+  authorize('COUNSELLOR'),
   [
     body('date').isISO8601().withMessage('Valid date required'),
     body('tasks').notEmpty().withMessage('Tasks data required'),
@@ -30,6 +29,6 @@ router.post(
   submitReport
 );
 
-router.put('/:id', authorize('RM', 'TEAM_LEAD', 'HOD'), updateReport);
+router.put('/:id', authorize('COUNSELLOR', 'HOD', 'SUPER_ADMIN'), updateReport);
 
 module.exports = router;

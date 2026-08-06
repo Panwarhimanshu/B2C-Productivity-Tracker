@@ -6,11 +6,9 @@ const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-const zoneRoutes = require('./routes/zones');
+const departmentRoutes = require('./routes/departments');
 const reportRoutes = require('./routes/reports');
-const teamRoutes = require('./routes/teams');
 const targetRoutes = require('./routes/targets');
-const directoryRoutes = require('./routes/directory');
 const notificationRoutes = require('./routes/notifications');
 const { errorHandler } = require('./middleware/errorHandler');
 
@@ -44,7 +42,7 @@ app.use(cors({
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: process.env.NODE_ENV === 'production' ? 200 : 2000,
   message: 'Too many requests from this IP, please try again later.',
 });
 app.use('/api/', limiter);
@@ -55,11 +53,9 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/zones', zoneRoutes);
+app.use('/api/departments', departmentRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api/teams', teamRoutes);
 app.use('/api/targets', targetRoutes);
-app.use('/api/directory', directoryRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));

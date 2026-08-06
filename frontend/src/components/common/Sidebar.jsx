@@ -1,38 +1,34 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, FileText, BarChart3, Users, MapPin,
-  ClipboardList, TrendingUp, Building2, ChevronLeft, ChevronRight, Target, Crosshair, BookUser, History,
+  LayoutDashboard, FileText, Users, MapPin,
+  ClipboardList, TrendingUp, Building2, ChevronLeft, ChevronRight, Target, History,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ROLE_LABELS } from '../../utils/constants';
 import { classNames } from '../../utils/helpers';
 
 const navByRole = {
-  RM: [
+  COUNSELLOR: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/submit-report', icon: FileText, label: 'Submit Report' },
     { to: '/my-reports', icon: ClipboardList, label: 'My Reports' },
     { to: '/my-performance', icon: TrendingUp, label: 'Performance' },
-    { to: '/directory', icon: BookUser, label: 'Team Directory' },
     { to: '/profile', icon: Users, label: 'Profile' },
   ],
-  TEAM_LEAD: [
-    { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/team-dashboard',  icon: BarChart3,        label: 'Team Dashboard' },
-    { to: '/team-targets',    icon: Crosshair,        label: 'Team Targets' },
-    { to: '/employee-reports',icon: ClipboardList,    label: 'Employee Reports' },
-    { to: '/directory',       icon: BookUser,         label: 'Team Directory' },
-    { to: '/profile',         icon: Users,            label: 'Profile' },
-  ],
   HOD: [
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/all-reports', icon: ClipboardList, label: 'All Reports' },
+    { to: '/report-logs', icon: History, label: 'Report Logs' },
+    { to: '/profile', icon: Users, label: 'Profile' },
+  ],
+  SUPER_ADMIN: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/org-dashboard', icon: Building2, label: 'Org Dashboard' },
     { to: '/all-reports', icon: ClipboardList, label: 'All Reports' },
     { to: '/report-logs', icon: History, label: 'Report Logs' },
     { to: '/user-management', icon: Users, label: 'User Management' },
-    { to: '/zone-management', icon: MapPin, label: 'Zone Management' },
+    { to: '/department-management', icon: MapPin, label: 'Department Management' },
     { to: '/target-management', icon: Target, label: 'Monthly Targets' },
-    { to: '/directory', icon: BookUser, label: 'Team Directory' },
     { to: '/profile', icon: Users, label: 'Profile' },
   ],
 };

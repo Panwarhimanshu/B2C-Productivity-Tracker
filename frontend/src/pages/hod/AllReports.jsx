@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Download, Edit2, Eye } from 'lucide-react';
 import { reportsAPI } from '../../api/reports';
 import { usersAPI } from '../../api/users';
-import { zonesAPI } from '../../api/zones';
+import { departmentsAPI } from '../../api/departments';
 import { PERIODS, REPORT_STATUS_COLORS } from '../../utils/constants';
 import { formatDate, downloadBlob, getErrorMessage } from '../../utils/helpers';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -12,24 +12,21 @@ import toast from 'react-hot-toast';
 const AllReports = () => {
   const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
-  const [zones, setZones] = useState([]);
-  const [teamLeads, setTeamLeads] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [pagination, setPagination] = useState({});
-  const [filters, setFilters] = useState({ period: 'monthly', userId: '', zoneId: '', teamLeadId: '' });
+  const [filters, setFilters] = useState({ period: 'monthly', userId: '', departmentId: '' });
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [editReport, setEditReport] = useState(null);
   const [viewOnly, setViewOnly] = useState(false);
 
   const fetchMeta = async () => {
-    const [usersRes, zonesRes, tlRes] = await Promise.all([
-      usersAPI.getAll({ role: 'RM' }),
-      zonesAPI.getAll(),
-      usersAPI.getAll({ role: 'TEAM_LEAD' }),
+    const [usersRes, deptRes] = await Promise.all([
+      usersAPI.getAll({ role: 'COUNSELLOR' }),
+      departmentsAPI.getAll(),
     ]);
     setUsers(usersRes.data.data);
-    setZones(zonesRes.data.data);
-    setTeamLeads(tlRes.data.data);
+    setDepartments(deptRes.data.data);
   };
 
   const fetchReports = async () => {
@@ -66,13 +63,9 @@ const AllReports = () => {
           <select className="input-field w-auto text-sm" value={filters.period} onChange={(e) => setFilter('period', e.target.value)}>
             {PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
-          <select className="input-field w-auto text-sm" value={filters.zoneId} onChange={(e) => setFilter('zoneId', e.target.value)}>
-            <option value="">All Zones</option>
-            {zones.map((z) => <option key={z._id} value={z._id}>{z.name}</option>)}
-          </select>
-          <select className="input-field w-auto text-sm" value={filters.teamLeadId} onChange={(e) => setFilter('teamLeadId', e.target.value)}>
-            <option value="">All Teams</option>
-            {teamLeads.map((tl) => <option key={tl._id} value={tl._id}>{tl.name}'s Team</option>)}
+          <select className="input-field w-auto text-sm" value={filters.departmentId} onChange={(e) => setFilter('departmentId', e.target.value)}>
+            <option value="">All Departments</option>
+            {departments.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
           </select>
           <select className="input-field w-auto text-sm" value={filters.userId} onChange={(e) => setFilter('userId', e.target.value)}>
             <option value="">All Employees</option>

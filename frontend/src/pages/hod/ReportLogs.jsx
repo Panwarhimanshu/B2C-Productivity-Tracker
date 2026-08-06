@@ -33,7 +33,7 @@ const ReportLogs = () => {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Report Logs</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Audit trail of report submissions and edits by RMs and Team Leads</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Audit trail of report submissions and edits</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <select className="input-field w-auto text-sm" value={period} onChange={(e) => setFilter(setPeriod)(e.target.value)}>
@@ -41,8 +41,9 @@ const ReportLogs = () => {
           </select>
           <select className="input-field w-auto text-sm" value={role} onChange={(e) => setFilter(setRole)(e.target.value)}>
             <option value="">All Roles</option>
-            <option value="RM">Relationship Manager</option>
-            <option value="TEAM_LEAD">Team Lead</option>
+            <option value="COUNSELLOR">Counsellor</option>
+            <option value="HOD">Head of Department</option>
+            <option value="SUPER_ADMIN">Super Admin</option>
           </select>
         </div>
       </div>

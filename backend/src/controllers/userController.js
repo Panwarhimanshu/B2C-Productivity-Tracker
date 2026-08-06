@@ -1,21 +1,15 @@
 const User = require('../models/User');
-const Zone = require('../models/Zone');
-const Team = require('../models/Team');
+const Department = require('../models/Department');
 const AuditLog = require('../models/AuditLog');
 
 const getUsers = async (req, res, next) => {
   try {
-    const { role, zoneId, teamLeadId, isActive = 'true', page = 1, limit = 20, search } = req.query;
+    const { role, departmentId, isActive = 'true', page = 1, limit = 20, search } = req.query;
 
     const filter = { isActive: isActive === 'true' };
 
-    if (req.user.role === 'TEAM_LEAD') {
-      filter.teamLeadId = req.user._id;
-    }
-
     if (role) filter.role = role;
-    if (zoneId) filter.zoneId = zoneId;
-    if (teamLeadId && req.user.role === 'HOD') filter.teamLeadId = teamLeadId;
+    if (departmentId) filter.departmentId = departmentId;
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -27,8 +21,7 @@ const getUsers = async (req, res, next) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [users, total] = await Promise.all([
       User.find(filter)
-        .populate('zoneId', 'name')
-        .populate('teamLeadId', 'name email')
+        .populate('departmentId', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),
@@ -47,9 +40,7 @@ const getUsers = async (req, res, next) => {
 
 const getUserById = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id)
-      .populate('zoneId', 'name')
-      .populate('teamLeadId', 'name email');
+    const user = await User.findById(req.params.id).populate('departmentId', 'name');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, data: user });
   } catch (error) {
@@ -59,21 +50,10 @@ const getUserById = async (req, res, next) => {
 
 const createUser = async (req, res, next) => {
   try {
-    const { name, email, password, role, designation, employeeId, zoneId, teamId, joiningDate } = req.body;
+    const { name, email, password, role, designation, employeeId, departmentId, joiningDate } = req.body;
 
-    let teamLeadId;
-    if (teamId) {
-      const team = await Team.findById(teamId);
-      if (!team) return res.status(400).json({ success: false, message: 'Selected team not found' });
-      teamLeadId = team.teamLeadId;
-    }
-
-    const user = new User({ name, email, password, role, designation, employeeId, zoneId, teamLeadId, joiningDate });
+    const user = new User({ name, email, password, role, designation, employeeId, departmentId, joiningDate });
     await user.save();
-
-    if (teamId) {
-      await Team.findByIdAndUpdate(teamId, { $addToSet: { members: user._id } });
-    }
 
     await AuditLog.create({
       action: 'CREATE_USER',
@@ -92,21 +72,13 @@ const createUser = async (req, res, next) => {
 
 const updateUser = async (req, res, next) => {
   try {
-    const { name, email, role, designation, employeeId, zoneId, teamId, joiningDate } = req.body;
+    const { name, email, role, designation, employeeId, departmentId, joiningDate } = req.body;
 
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     const before = user.toJSON();
-    const updates = { name, email, role, designation, employeeId, zoneId, joiningDate };
-
-    if (teamId) {
-      const team = await Team.findById(teamId);
-      if (!team) return res.status(400).json({ success: false, message: 'Selected team not found' });
-      updates.teamLeadId = team.teamLeadId;
-      await Team.updateMany({ _id: { $ne: teamId }, members: user._id }, { $pull: { members: user._id } });
-      await Team.findByIdAndUpdate(teamId, { $addToSet: { members: user._id } });
-    }
+    const updates = { name, email, role, designation, employeeId, departmentId, joiningDate };
 
     Object.assign(user, updates);
 
@@ -172,8 +144,26 @@ const reactivateUser = async (req, res, next) => {
   }
 };
 
-// HOD: bulk create-or-update users from parsed CSV rows
-// Each row: { name, email, password, role, designation, employeeId, zone, team, joiningDate }
+// SUPER_ADMIN: map a single user (HOD or Counsellor) to a department — partial update, doesn't touch other fields
+const updateUserDepartment = async (req, res, next) => {
+  try {
+    const { departmentId } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { departmentId: departmentId || null },
+      { new: true, runValidators: true }
+    ).populate('departmentId', 'name');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    res.json({ success: true, message: 'Department updated successfully', data: user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// SUPER_ADMIN: bulk create-or-update users from parsed CSV rows
+// Each row: { name, email, password, role, designation, employeeId, department, joiningDate }
 const importUsers = async (req, res, next) => {
   try {
     const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
@@ -181,9 +171,8 @@ const importUsers = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'No rows to import' });
     }
 
-    const zones = await Zone.find({ isActive: true });
-    const zoneByName = new Map(zones.map((z) => [z.name.toLowerCase(), z._id]));
-    const allTeams = await Team.find({ isActive: true });
+    const departments = await Department.find({ isActive: true });
+    const departmentByName = new Map(departments.map((d) => [d.name.toLowerCase(), d._id]));
 
     let created = 0;
     let updated = 0;
@@ -202,28 +191,18 @@ const importUsers = async (req, res, next) => {
           continue;
         }
 
-        const role = (row.role || 'RM').trim().toUpperCase();
-        if (!['RM', 'TEAM_LEAD', 'HOD'].includes(role)) {
+        const role = (row.role || 'COUNSELLOR').trim().toUpperCase();
+        if (!['COUNSELLOR', 'HOD', 'SUPER_ADMIN'].includes(role)) {
           errors.push({ row: rowNum, email, message: `Invalid role "${row.role}"` });
           continue;
         }
 
-        let zoneId;
-        const zoneName = (row.zone || '').trim();
-        if (zoneName && !['all zone', 'all'].includes(zoneName.toLowerCase())) {
-          const match = zoneByName.get(zoneName.toLowerCase());
-          if (match) zoneId = match;
-          else warnings.push({ row: rowNum, email, message: `Zone "${zoneName}" not found, left unassigned` });
-        }
-
-        let teamId;
-        let teamLeadId;
-        const teamName = (row.team || '').trim();
-        if (teamName) {
-          const match = allTeams.find((t) => t.name.toLowerCase() === teamName.toLowerCase()
-            && (!zoneId || t.zoneId?.toString() === zoneId.toString()));
-          if (match) { teamId = match._id; teamLeadId = match.teamLeadId; }
-          else warnings.push({ row: rowNum, email, message: `Team "${teamName}" not found${zoneName ? ` in zone "${zoneName}"` : ''}, left unassigned` });
+        let departmentId;
+        const departmentName = (row.department || '').trim();
+        if (departmentName) {
+          const match = departmentByName.get(departmentName.toLowerCase());
+          if (match) departmentId = match;
+          else warnings.push({ row: rowNum, email, message: `Department "${departmentName}" not found, left unassigned` });
         }
 
         const designation = (row.designation || '').trim();
@@ -239,8 +218,7 @@ const importUsers = async (req, res, next) => {
             role,
             designation,
             ...(employeeId && { employeeId }),
-            ...(zoneId && { zoneId }),
-            ...(teamLeadId && { teamLeadId }),
+            ...(departmentId && { departmentId }),
             ...(joiningDate && { joiningDate }),
           });
           if (password) {
@@ -251,17 +229,15 @@ const importUsers = async (req, res, next) => {
             existing.password = password;
           }
           await existing.save();
-          if (teamId) await Team.findByIdAndUpdate(teamId, { $addToSet: { members: existing._id } });
           updated++;
         } else {
           if (!password || password.length < 6) {
             errors.push({ row: rowNum, email, message: 'Password required for new user (min 6 characters)' });
             continue;
           }
-          const newUser = await User.create({
-            name, email, password, role, designation, employeeId, zoneId, teamLeadId, joiningDate,
+          await User.create({
+            name, email, password, role, designation, employeeId, departmentId, joiningDate,
           });
-          if (teamId) await Team.findByIdAndUpdate(teamId, { $addToSet: { members: newUser._id } });
           created++;
         }
       } catch (err) {
@@ -275,4 +251,4 @@ const importUsers = async (req, res, next) => {
   }
 };
 
-module.exports = { getUsers, getUserById, createUser, updateUser, hideUser, reactivateUser, importUsers };
+module.exports = { getUsers, getUserById, createUser, updateUser, hideUser, reactivateUser, importUsers, updateUserDepartment };

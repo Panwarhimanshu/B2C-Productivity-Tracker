@@ -3,7 +3,6 @@ import api from './axios';
 export const reportsAPI = {
   submit: (data) => api.post('/reports', data),
   getMy: (params) => api.get('/reports/my', { params }),
-  getTeam: (params) => api.get('/reports/team', { params }),
   getAll: (params) => api.get('/reports/all', { params }),
   update: (id, data) => api.put(`/reports/${id}`, data),
   getAnalytics: (params) => api.get('/reports/analytics', { params }),

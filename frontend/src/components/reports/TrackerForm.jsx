@@ -8,7 +8,7 @@ import {
 
 const TOTAL_DAYS = 300; // 25 days × 12 months
 
-// Controlled editor / viewer for an RM Daily Tracker payload.
+// Controlled editor / viewer for a Counsellor Daily Tracker payload.
 // Props: value (tracker object), onChange(next), readOnly, yearlyTarget ({ profiles, wt } yearly values).
 const TrackerForm = ({ value, onChange, readOnly = false, yearlyTarget = null }) => {
   const targets = yearlyTarget ? {
@@ -376,7 +376,7 @@ const TrackerForm = ({ value, onChange, readOnly = false, yearlyTarget = null })
             );
           })}
         </div>
-        <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 block mb-2">One-line summary from RM</label>
+        <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 block mb-2">One-line summary from Counsellor</label>
         {readOnly ? (
           <p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/40 rounded-xl px-4 py-3 border border-gray-200 dark:border-gray-700">{data.summary || '—'}</p>
         ) : (

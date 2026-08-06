@@ -1,6 +1,6 @@
 const { getTransporter } = require('../config/email');
 
-const FROM_NAME = process.env.EMAIL_FROM_NAME || 'B2B Task Tracker';
+const FROM_NAME = process.env.EMAIL_FROM_NAME || 'B2C Task Tracker';
 
 const sendMail = async ({ to, subject, html }) => {
   const transporter = getTransporter();
@@ -38,7 +38,7 @@ const sendReportSubmittedEmail = async ({ to, recipientName, rmName, reportDate,
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
           <tr>
             <td style="background-color: #2563eb; padding: 24px 32px;">
-              <p style="margin: 0; color: #dbeafe; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;">B2B Task Tracker</p>
+              <p style="margin: 0; color: #dbeafe; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;">B2C Task Tracker</p>
               <h1 style="margin: 4px 0 0; color: #ffffff; font-size: 20px; font-weight: 700;">New Daily Report Submitted</h1>
             </td>
           </tr>
@@ -81,7 +81,7 @@ const sendReportSubmittedEmail = async ({ to, recipientName, rmName, reportDate,
           </tr>` : ''}
           <tr>
             <td style="padding: 16px 32px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #9ca3af; font-size: 12px; line-height: 1.5;">This is an automated notification from the B2B Task Tracker. Please do not reply to this email.</p>
+              <p style="margin: 0; color: #9ca3af; font-size: 12px; line-height: 1.5;">This is an automated notification from the B2C Task Tracker. Please do not reply to this email.</p>
             </td>
           </tr>
         </table>

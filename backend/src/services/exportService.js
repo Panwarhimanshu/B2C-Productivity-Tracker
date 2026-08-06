@@ -3,7 +3,7 @@ const { computeReportTotals } = require('../config/tracker');
 
 const exportToExcel = async (reports) => {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'B2B Task Tracker';
+  workbook.creator = 'B2C Task Tracker';
   workbook.created = new Date();
 
   const sheet = workbook.addWorksheet('Daily Reports');

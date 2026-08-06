@@ -1,13 +1,12 @@
 {
-  "name": "b2b-task-tracker-backend",
+  "name": "b2c-task-tracker-backend",
   "version": "1.0.0",
-  "description": "B2B Daily Task Tracking System - Backend API",
+  "description": "B2C Daily Task Tracking System - Backend API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node scripts/seed.js",
-    "seed:directory": "node scripts/seedDirectory.js"
+    "seed": "node scripts/seed.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, UserX, UserCheck, Search, ChevronDown, ChevronUp, Upload, Download, X } from 'lucide-react';
 import { usersAPI } from '../../api/users';
-import { zonesAPI } from '../../api/zones';
-import { teamsAPI } from '../../api/teams';
+import { departmentsAPI } from '../../api/departments';
 import { targetsAPI } from '../../api/targets';
 import { ROLE_LABELS, ROLES } from '../../utils/constants';
 import { formatDate, getErrorMessage } from '../../utils/helpers';
@@ -10,7 +9,7 @@ import { parseCSV, downloadCSV } from '../../utils/csv';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
-const USER_IMPORT_HEADERS = ['name', 'email', 'password', 'role', 'designation', 'employeeId', 'zone', 'team', 'joiningDate'];
+const USER_IMPORT_HEADERS = ['name', 'email', 'password', 'role', 'designation', 'employeeId', 'department', 'joiningDate'];
 const TARGET_IMPORT_HEADERS = ['email', 'year', 'profiles', 'wt', 'visaServices', 'sop', 'educationLoan', 'gic', 'blockAccount', 'forexRemittance', 'insurance'];
 
 const ImportResultSummary = ({ result, counts }) => (
@@ -55,12 +54,11 @@ const round2 = (n) => Math.round(n * 100) / 100;
 
 const emptyTargetForm = () => Object.fromEntries(TARGET_FIELDS.map((f) => [f.key, '']));
 
-const emptyForm = { name: '', email: '', password: '', role: 'RM', designation: '', employeeId: '', zoneId: '', teamId: '', joiningDate: '' };
+const emptyForm = { name: '', email: '', password: '', role: 'COUNSELLOR', designation: '', employeeId: '', departmentId: '', joiningDate: '' };
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
-  const [zones, setZones] = useState([]);
-  const [teams, setTeams] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [pagination, setPagination] = useState({});
   const [showInactive, setShowInactive] = useState(false);
   const [search, setSearch] = useState('');
@@ -81,15 +79,13 @@ const UserManagement = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [usersRes, zonesRes, teamsRes] = await Promise.all([
+      const [usersRes, deptRes] = await Promise.all([
         usersAPI.getAll({ isActive: !showInactive, search: search || undefined, page, limit: 15 }),
-        zonesAPI.getAll(),
-        teamsAPI.getAll(),
+        departmentsAPI.getAll(),
       ]);
       setUsers(usersRes.data.data);
       setPagination(usersRes.data.pagination);
-      setZones(zonesRes.data.data);
-      setTeams(teamsRes.data.data);
+      setDepartments(deptRes.data.data);
     } finally {
       setLoading(false);
     }
@@ -99,13 +95,10 @@ const UserManagement = () => {
 
   const openCreate = () => { setForm(emptyForm); setTargetForm(emptyTargetForm()); setShowTargets(false); setEditingUser(null); setShowForm(true); };
   const openEdit = (user) => {
-    const memberTeam = teams.find((t) => t.members?.some((m) => m._id === user._id));
-    const fallbackTeam = teams.find((t) => t.zoneId?._id === user.zoneId?._id && t.teamLeadId?._id === user.teamLeadId?._id);
     setForm({
       name: user.name, email: user.email, password: '', role: user.role,
       designation: user.designation || '',
-      employeeId: user.employeeId || '', zoneId: user.zoneId?._id || '',
-      teamId: (memberTeam || fallbackTeam)?._id || '',
+      employeeId: user.employeeId || '', departmentId: user.departmentId?._id || '',
       joiningDate: user.joiningDate ? user.joiningDate.split('T')[0] : '',
     });
     setEditingUser(user);
@@ -118,8 +111,7 @@ const UserManagement = () => {
     try {
       const payload = { ...form };
       if (!payload.password) delete payload.password;
-      if (!payload.zoneId || payload.zoneId === 'all') delete payload.zoneId;
-      if (!payload.teamId) delete payload.teamId;
+      if (!payload.departmentId) delete payload.departmentId;
 
       if (editingUser) {
         await usersAPI.update(editingUser._id, payload);
@@ -170,8 +162,8 @@ const UserManagement = () => {
 
   const downloadUserSample = () => {
     downloadCSV('users-import-sample.csv', USER_IMPORT_HEADERS, [
-      { name: 'Anita Verma', email: 'anita.verma@company.com', password: 'User@123', role: 'RM', designation: 'Relationship Manager', employeeId: 'RM101', zone: 'North', team: 'North Team Alpha', joiningDate: '2024-01-15' },
-      { name: 'Priya Sharma', email: 'priya.sharma@company.com', password: 'Admin@123', role: 'TEAM_LEAD', designation: 'Team Lead', employeeId: 'TL101', zone: 'North', team: '', joiningDate: '2023-06-01' },
+      { name: 'Anita Verma', email: 'anita.verma@company.com', password: 'User@123', role: 'COUNSELLOR', designation: 'Counsellor', employeeId: 'C101', department: 'North', joiningDate: '2024-01-15' },
+      { name: 'Priya Sharma', email: 'priya.sharma@company.com', password: 'Admin@123', role: 'HOD', designation: 'Head of Department', employeeId: 'HOD101', department: 'North', joiningDate: '2023-06-01' },
     ]);
   };
 
@@ -252,7 +244,7 @@ const UserManagement = () => {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                 <tr>
-                  {['Name', 'Employee ID', 'Role', 'Zone', 'Team Lead', 'Joined', 'Status', 'Actions'].map((h) => (
+                  {['Name', 'Employee ID', 'Role', 'Department', 'Joined', 'Status', 'Actions'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{h}</th>
                   ))}
                 </tr>
@@ -269,8 +261,7 @@ const UserManagement = () => {
                     <td className="px-4 py-3">
                       <span className="badge bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-300">{ROLE_LABELS[u.role]}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{u.zoneId?.name || '-'}</td>
-                    <td className="px-4 py-3 text-gray-500">{u.teamLeadId?.name || '-'}</td>
+                    <td className="px-4 py-3 text-gray-500">{u.departmentId?.name || '-'}</td>
                     <td className="px-4 py-3 text-gray-500">{formatDate(u.joiningDate)}</td>
                     <td className="px-4 py-3">
                       <span className={`badge ${u.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
@@ -342,38 +333,19 @@ const UserManagement = () => {
                 <input type="text" className="input-field" placeholder="e.g. Senior Relationship Manager" value={form.designation} onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))} />
               </div>
               <div>
-                <label className="label">Zone</label>
+                <label className="label">Department</label>
                 <select
                   className="input-field"
-                  value={form.zoneId}
-                  onChange={(e) => setForm((f) => ({ ...f, zoneId: e.target.value, teamId: '' }))}
+                  value={form.departmentId}
+                  onChange={(e) => setForm((f) => ({ ...f, departmentId: e.target.value }))}
                 >
-                  <option value="">Select zone...</option>
-                  <option value="all">All Zone</option>
-                  {zones.map((z) => <option key={z._id} value={z._id}>{z.name}</option>)}
+                  <option value="">Unassigned</option>
+                  {departments.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
                 </select>
               </div>
-              {form.zoneId && form.zoneId !== 'all' && (
-                <div>
-                  <label className="label">Team</label>
-                  {(() => {
-                    const zoneTeams = teams.filter((t) => t.zoneId?._id === form.zoneId);
-                    return zoneTeams.length === 0 ? (
-                      <p className="text-xs text-gray-400">No teams in this zone yet — add one from Zone Management.</p>
-                    ) : (
-                      <select className="input-field" value={form.teamId} onChange={(e) => setForm((f) => ({ ...f, teamId: e.target.value }))}>
-                        <option value="">No team</option>
-                        {zoneTeams.map((t) => (
-                          <option key={t._id} value={t._id}>{t.name}{t.teamLeadId?.name ? ` — ${t.teamLeadId.name}` : ''}</option>
-                        ))}
-                      </select>
-                    );
-                  })()}
-                </div>
-              )}
 
-              {/* Yearly targets — only for new RM creation */}
-              {!editingUser && form.role === 'RM' && (
+              {/* Yearly targets — only for new Counsellor creation */}
+              {!editingUser && form.role === 'COUNSELLOR' && (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                   <button
                     type="button"
@@ -442,7 +414,7 @@ const UserManagement = () => {
               <div>
                 <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Import Users (Login)</h3>
                 <p className="text-xs text-gray-500 mt-1">
-                  Columns: {USER_IMPORT_HEADERS.join(', ')}. The team column must match an existing team's name within that row's zone (see Zone Management). Existing emails are updated (password kept unless a new one is given); new emails are created (password required, min 6 characters).
+                  Columns: {USER_IMPORT_HEADERS.join(', ')}. The department column must match an existing department's name (see Department Management). Existing emails are updated (password kept unless a new one is given); new emails are created (password required, min 6 characters).
                 </p>
                 <div className="flex gap-2 mt-2">
                   <button type="button" onClick={downloadUserSample} className="btn-secondary text-xs py-1.5 px-3">

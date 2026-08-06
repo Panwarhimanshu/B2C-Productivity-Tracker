@@ -45,7 +45,7 @@ const Dashboard = () => {
   const [recentReports, setRecentReports] = useState([]);
   const [period, setPeriod]             = useState('monthly');
   const [loading, setLoading]           = useState(true);
-  // RM-only daily target state
+  // Counsellor-only daily target state
   const [dailyTarget, setDailyTarget]   = useState(null);
   const [todayReport, setTodayReport]   = useState(null);
   const [targetLoading, setTargetLoading] = useState(false);
@@ -57,10 +57,8 @@ const Dashboard = () => {
         const [analyticsRes, summaryRes, reportsRes] = await Promise.all([
           reportsAPI.getAnalytics({ period }),
           reportsAPI.getSummary({ period }),
-          user.role === 'RM'
+          user.role === 'COUNSELLOR'
             ? reportsAPI.getMy({ period, limit: 8 })
-            : user.role === 'TEAM_LEAD'
-            ? reportsAPI.getTeam({ period, limit: 8 })
             : reportsAPI.getAll({ period, limit: 8 }),
         ]);
         setAnalytics(analyticsRes.data.data);
@@ -75,9 +73,9 @@ const Dashboard = () => {
     fetchData();
   }, [period, user.role]);
 
-  // Fetch daily target + today's report for RM only
+  // Fetch daily target + today's report for Counsellor only
   useEffect(() => {
-    if (user.role !== 'RM') return;
+    if (user.role !== 'COUNSELLOR') return;
     const now = new Date();
     setTargetLoading(true);
     Promise.all([
@@ -116,7 +114,7 @@ const Dashboard = () => {
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
           </select>
-          {user?.role === 'RM' && (
+          {user?.role === 'COUNSELLOR' && (
             <button onClick={() => navigate('/submit-report')} className="btn-primary">
               <Plus className="w-4 h-4" />
               Submit Report
@@ -125,8 +123,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* ── Daily Target Checklist (RM only) ── */}
-      {user?.role === 'RM' && (
+      {/* ── Daily Target Checklist (Counsellor only) ── */}
+      {user?.role === 'COUNSELLOR' && (
         <DailyTargetCard
           target={dailyTarget}
           todayReport={todayReport}
@@ -165,7 +163,7 @@ const Dashboard = () => {
       {!loading && <TrackerSummary summary={summary} />}
 
       {/* Recent Reports */}
-      <RecentReports reports={recentReports} showUser={user?.role !== 'RM'} />
+      <RecentReports reports={recentReports} showUser={user?.role !== 'COUNSELLOR'} />
     </div>
   );
 };
@@ -219,7 +217,7 @@ const DailyTargetCard = ({ target, todayReport, loading, onSubmit }) => {
       {loading ? (
         <div className="flex items-center justify-center py-6 text-sm text-gray-400">Loading targets…</div>
       ) : !target ? (
-        <p className="text-sm text-gray-400 text-center py-4">No targets set yet — ask your HOD to set yearly targets.</p>
+        <p className="text-sm text-gray-400 text-center py-4">No targets set yet — ask your admin to set yearly targets.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {DAILY_TARGET_FIELDS.map((f) => {

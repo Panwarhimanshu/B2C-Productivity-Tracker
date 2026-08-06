@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const zoneSchema = new mongoose.Schema(
+const departmentSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
     description: { type: String, trim: true },
@@ -9,4 +9,4 @@ const zoneSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Zone', zoneSchema);
+module.exports = mongoose.model('Department', departmentSchema);

@@ -36,7 +36,7 @@ const Login = () => {
           <div className="bg-white rounded-2xl px-6 py-4 inline-block mx-auto mb-6">
             <img src="/kanan-logo.svg" alt="Kanan" style={{ height: 28 }} />
           </div>
-          <h1 className="text-3xl font-bold mb-4">B2B Task Tracker</h1>
+          <h1 className="text-3xl font-bold mb-4">B2C Task Tracker</h1>
 
           <div className="mt-2 mb-8">
             <p className="text-2xl font-semibold text-white leading-snug">

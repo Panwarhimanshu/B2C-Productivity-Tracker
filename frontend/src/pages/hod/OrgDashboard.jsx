@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Users, FileText, TrendingUp, MapPin, Building2 } from 'lucide-react';
 import { reportsAPI } from '../../api/reports';
 import { usersAPI } from '../../api/users';
-import { zonesAPI } from '../../api/zones';
+import { departmentsAPI } from '../../api/departments';
 import KPICard from '../../components/dashboard/KPICard';
 import PerformanceChart from '../../components/dashboard/PerformanceChart';
 import RecentReports from '../../components/dashboard/RecentReports';
@@ -14,7 +14,7 @@ const OrgDashboard = () => {
   const [analytics, setAnalytics] = useState(null);
   const [summary, setSummary] = useState(null);
   const [reports, setReports] = useState([]);
-  const [counts, setCounts] = useState({ users: 0, zones: 0 });
+  const [counts, setCounts] = useState({ users: 0, departments: 0 });
   const [period, setPeriod] = useState('monthly');
   const [loading, setLoading] = useState(true);
 
@@ -25,13 +25,13 @@ const OrgDashboard = () => {
       reportsAPI.getSummary({ period }),
       reportsAPI.getAll({ period, limit: 10 }),
       usersAPI.getAll({ limit: 1 }),
-      zonesAPI.getAll(),
+      departmentsAPI.getAll(),
     ])
-      .then(([analyticsRes, summaryRes, reportsRes, usersRes, zonesRes]) => {
+      .then(([analyticsRes, summaryRes, reportsRes, usersRes, deptRes]) => {
         setAnalytics(analyticsRes.data.data);
         setSummary(summaryRes.data.data);
         setReports(reportsRes.data.data);
-        setCounts({ users: usersRes.data.pagination?.total || 0, zones: zonesRes.data.data?.length || 0 });
+        setCounts({ users: usersRes.data.pagination?.total || 0, departments: deptRes.data.data?.length || 0 });
       })
       .finally(() => setLoading(false));
   }, [period]);
@@ -53,7 +53,7 @@ const OrgDashboard = () => {
             <KPICard title="Total Users" value={counts.users} icon={Users} color="blue" />
             <KPICard title="Total Reports" value={analyticsSummary.totalReports} icon={FileText} color="green" />
             <KPICard title="Applications" value={analyticsSummary.totalTasks} icon={TrendingUp} color="purple" />
-            <KPICard title="Active Zones" value={counts.zones} icon={MapPin} color="yellow" />
+            <KPICard title="Active Departments" value={counts.departments} icon={MapPin} color="yellow" />
           </div>
 
           {analytics?.dailyBreakdown?.length > 0 && (

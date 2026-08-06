@@ -129,13 +129,13 @@ const TargetManagement = () => {
         {loading ? (
           <LoadingSpinner className="py-16" />
         ) : rows.length === 0 ? (
-          <p className="text-center text-gray-500 py-12">No RMs found</p>
+          <p className="text-center text-gray-500 py-12">No Counsellors found</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">RM</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">Counsellor</th>
                   {TARGET_FIELDS.map((f) => (
                     <th key={f.key} className="px-3 py-3 text-center font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       <div>{f.label}</div>
@@ -157,7 +157,7 @@ const TargetManagement = () => {
                           <div className="flex items-center gap-1">
                             <div>
                               <p className="font-medium text-gray-800 dark:text-gray-200">{row.user.name}</p>
-                              <p className="text-xs text-gray-400">{row.user.zoneId?.name || '—'}</p>
+                              <p className="text-xs text-gray-400">{row.user.departmentId?.name || '—'}</p>
                             </div>
                           </div>
                         </td>

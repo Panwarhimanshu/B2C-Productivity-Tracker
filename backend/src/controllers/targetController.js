@@ -22,7 +22,7 @@ const derive = (yearly, wdpm = 25) => {
   return out;
 };
 
-// HOD: create or update yearly targets for a user
+// SUPER_ADMIN: create or update yearly targets for a user
 const upsertTarget = async (req, res, next) => {
   try {
     const { userId, year, workingDaysPerMonth, ...fields } = req.body;
@@ -45,15 +45,15 @@ const upsertTarget = async (req, res, next) => {
   }
 };
 
-// HOD: table of all RMs with their yearly targets + derived daily/monthly
+// SUPER_ADMIN: table of all Counsellors with their yearly targets + derived daily/monthly
 const getTargetsTable = async (req, res, next) => {
   try {
     const year = Number(req.query.year) || new Date().getFullYear();
 
     const [rms, targets] = await Promise.all([
-      User.find({ role: 'RM', isActive: true })
-        .select('name employeeId zoneId')
-        .populate('zoneId', 'name'),
+      User.find({ role: 'COUNSELLOR', isActive: true })
+        .select('name employeeId departmentId')
+        .populate('departmentId', 'name'),
       Target.find({ year }),
     ]);
 
@@ -75,7 +75,7 @@ const getTargetsTable = async (req, res, next) => {
   }
 };
 
-// RM: get own target with derived values + actuals for current month
+// Counsellor: get own target with derived values + actuals for current month
 const getTargetWithActuals = async (req, res, next) => {
   try {
     const userId = req.params.userId === 'me' ? req.user._id : req.params.userId;
@@ -117,69 +117,7 @@ const getTargetWithActuals = async (req, res, next) => {
   }
 };
 
-// TEAM_LEAD: all RMs in their team with yearly targets + this-month actuals
-const getTeamTargets = async (req, res, next) => {
-  try {
-    const teamLeadId = req.user._id;
-    const year  = Number(req.query.year)  || new Date().getFullYear();
-    const month = Number(req.query.month) || new Date().getMonth() + 1;
-
-    const rms = await User.find({ role: 'RM', isActive: true, teamLeadId })
-      .select('name employeeId zoneId')
-      .populate('zoneId', 'name');
-
-    if (!rms.length) return res.json({ success: true, data: [], year, month });
-
-    const rmIds = rms.map((r) => r._id);
-
-    const [targets, reports] = await Promise.all([
-      Target.find({ userId: { $in: rmIds }, year }),
-      DailyReport.find({
-        userId: { $in: rmIds },
-        date: {
-          $gte: new Date(year, month - 1, 1),
-          $lte: new Date(year, month, 0, 23, 59, 59),
-        },
-      }),
-    ]);
-
-    const targetMap = {};
-    targets.forEach((t) => { targetMap[t.userId.toString()] = t; });
-
-    const reportsByUser = {};
-    reports.forEach((r) => {
-      const uid = r.userId.toString();
-      if (!reportsByUser[uid]) reportsByUser[uid] = [];
-      reportsByUser[uid].push(r);
-    });
-
-    const rows = rms.map((rm) => {
-      const t          = targetMap[rm._id.toString()];
-      const userReports = reportsByUser[rm._id.toString()] || [];
-
-      const actuals = { profiles: 0, wt: 0, visaServices: 0 };
-      userReports.forEach((r) => {
-        const tot = computeReportTotals(r.tasks);
-        actuals.profiles     += tot.profile?.achieved || 0;
-        actuals.wt           += tot.profile?.wt       || 0;
-        actuals.visaServices += tot.profile?.visa     || 0;
-      });
-
-      return {
-        user:    rm,
-        target:  t || null,
-        derived: t ? derive(t, t.workingDaysPerMonth) : null,
-        actuals,
-      };
-    });
-
-    res.json({ success: true, data: rows, year, month });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// HOD: bulk upsert yearly targets from parsed CSV rows, matched by email
+// SUPER_ADMIN: bulk upsert yearly targets from parsed CSV rows, matched by email
 // Each row: { email, year, profiles, wt, visaServices, sop, educationLoan, gic, blockAccount, forexRemittance, insurance }
 const importTargets = async (req, res, next) => {
   try {
@@ -229,4 +167,4 @@ const importTargets = async (req, res, next) => {
   }
 };
 
-module.exports = { upsertTarget, getTargetsTable, getTargetWithActuals, getTeamTargets, importTargets };
+module.exports = { upsertTarget, getTargetsTable, getTargetWithActuals, importTargets };
