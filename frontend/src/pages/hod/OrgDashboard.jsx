@@ -52,7 +52,7 @@ const OrgDashboard = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard title="Total Users" value={counts.users} icon={Users} color="blue" />
             <KPICard title="Total Reports" value={analyticsSummary.totalReports} icon={FileText} color="green" />
-            <KPICard title="Applications" value={analyticsSummary.totalTasks} icon={TrendingUp} color="purple" />
+            <KPICard title="Admissions" value={analyticsSummary.totalTasks} icon={TrendingUp} color="purple" />
             <KPICard title="Active Departments" value={counts.departments} icon={MapPin} color="yellow" />
           </div>
 

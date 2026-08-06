@@ -12,8 +12,8 @@ const {
   computeReportTotals,
 } = require('../config/tracker');
 
-// Headline count shown in lists/cards: total applications across countries.
-const applicationsCount = (tasks) => computeReportTotals(tasks).profile.applications || 0;
+// Headline count shown in lists/cards: total admissions achieved across countries.
+const applicationsCount = (tasks) => computeReportTotals(tasks).profile.admissionAchieved || 0;
 
 // Notify all active HODs/Super Admins (in-app + email) when a report is submitted.
 // Best-effort: failures here must never fail the report submission itself.

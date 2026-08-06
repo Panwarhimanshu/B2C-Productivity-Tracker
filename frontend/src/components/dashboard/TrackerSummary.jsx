@@ -1,8 +1,8 @@
 import { PROFILE_COLUMNS, COMMUNICATION_ITEMS } from '../../constants/tracker';
 
-// Renders the aggregated KPI rollup from GET /reports/summary (mirrors the TL Dashboard tab).
-const KPI_KEYS = ['applications', 'offer', 'wt', 'visa', 'rejection', 'refund', 'defer', 'commission'];
-const TABLE_KEYS = ['target', 'committed', 'achieved', 'applications', 'offer', 'wt', 'visa', 'rejection', 'refund', 'defer', 'commission'];
+// Renders the aggregated KPI rollup from GET /reports/summary (mirrors the org-wide dashboard tab).
+const KPI_KEYS = PROFILE_COLUMNS.filter((c) => c.type === 'number').map((c) => c.key);
+const TABLE_KEYS = KPI_KEYS;
 const labelOf = (key) => PROFILE_COLUMNS.find((c) => c.key === key)?.label || key;
 
 const TrackerSummary = ({ summary }) => {

@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, UserX, UserCheck, Search, ChevronDown, ChevronUp, Upload, Download, X } from 'lucide-react';
+import { Plus, Edit2, UserX, UserCheck, Search, Upload, Download, X } from 'lucide-react';
 import { usersAPI } from '../../api/users';
 import { departmentsAPI } from '../../api/departments';
 import { targetsAPI } from '../../api/targets';
 import { ROLE_LABELS, ROLES } from '../../utils/constants';
+import { COUNTRIES } from '../../constants/tracker';
 import { formatDate, getErrorMessage } from '../../utils/helpers';
 import { parseCSV, downloadCSV } from '../../utils/csv';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const USER_IMPORT_HEADERS = ['name', 'email', 'password', 'role', 'designation', 'employeeId', 'department', 'joiningDate'];
-const TARGET_IMPORT_HEADERS = ['email', 'year', 'profiles', 'wt', 'visaServices', 'sop', 'educationLoan', 'gic', 'blockAccount', 'forexRemittance', 'insurance'];
+const TARGET_IMPORT_HEADERS = ['email', 'country', 'year', 'month', 'coachingTarget', 'admissionTarget', 'revenueTarget'];
 
 const ImportResultSummary = ({ result, counts }) => (
   <div className="mt-2 text-xs space-y-1">
@@ -36,24 +37,6 @@ const ImportResultSummary = ({ result, counts }) => (
   </div>
 );
 
-const TARGET_FIELDS = [
-  { key: 'profiles',        label: 'Profiles' },
-  { key: 'wt',              label: 'WT' },
-  { key: 'visaServices',    label: 'Visa Services',      hint: '25% of WT' },
-  { key: 'sop',             label: 'SOP',                hint: '15% of Profiles' },
-  { key: 'educationLoan',   label: 'Education Loan',     hint: '25% of WT' },
-  { key: 'gic',             label: 'GIC',                hint: '50% of Canada WT' },
-  { key: 'blockAccount',    label: 'Block Account',      hint: '50% of Germany WT' },
-  { key: 'forexRemittance', label: 'Forex / Remittance', hint: '5 / Month' },
-  { key: 'insurance',       label: 'Insurance',          hint: '2 / Month' },
-];
-
-const TOTAL_DAYS = 25 * 12;
-const round1 = (n) => Math.round(n * 10) / 10;
-const round2 = (n) => Math.round(n * 100) / 100;
-
-const emptyTargetForm = () => Object.fromEntries(TARGET_FIELDS.map((f) => [f.key, '']));
-
 const emptyForm = { name: '', email: '', password: '', role: 'COUNSELLOR', designation: '', employeeId: '', departmentId: '', joiningDate: '' };
 
 const UserManagement = () => {
@@ -68,8 +51,6 @@ const UserManagement = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [targetForm, setTargetForm] = useState(emptyTargetForm());
-  const [showTargets, setShowTargets] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importingUsers, setImportingUsers] = useState(false);
   const [importingTargets, setImportingTargets] = useState(false);
@@ -93,7 +74,7 @@ const UserManagement = () => {
 
   useEffect(() => { fetchData(); }, [showInactive, search, page]);
 
-  const openCreate = () => { setForm(emptyForm); setTargetForm(emptyTargetForm()); setShowTargets(false); setEditingUser(null); setShowForm(true); };
+  const openCreate = () => { setForm(emptyForm); setEditingUser(null); setShowForm(true); };
   const openEdit = (user) => {
     setForm({
       name: user.name, email: user.email, password: '', role: user.role,
@@ -117,17 +98,7 @@ const UserManagement = () => {
         await usersAPI.update(editingUser._id, payload);
         toast.success('User updated');
       } else {
-        const res = await usersAPI.create(payload);
-        const newUserId = res.data.data?._id;
-        // Save yearly targets if any field was filled
-        const hasTargets = TARGET_FIELDS.some((f) => Number(targetForm[f.key]) > 0);
-        if (newUserId && hasTargets) {
-          await targetsAPI.upsert({
-            userId: newUserId,
-            year: new Date().getFullYear(),
-            ...Object.fromEntries(TARGET_FIELDS.map((f) => [f.key, Number(targetForm[f.key]) || 0])),
-          });
-        }
+        await usersAPI.create(payload);
         toast.success('User created');
       }
       setShowForm(false);
@@ -168,8 +139,9 @@ const UserManagement = () => {
   };
 
   const downloadTargetSample = () => {
+    const now = new Date();
     downloadCSV('targets-import-sample.csv', TARGET_IMPORT_HEADERS, [
-      { email: 'anita.verma@company.com', year: new Date().getFullYear(), profiles: 120, wt: 300, visaServices: 75, sop: 18, educationLoan: 75, gic: 150, blockAccount: 50, forexRemittance: 60, insurance: 24 },
+      { email: 'anita.verma@company.com', country: COUNTRIES[0], year: now.getFullYear(), month: now.getMonth() + 1, coachingTarget: 40, admissionTarget: 25, revenueTarget: 500000 },
     ]);
   };
 
@@ -343,51 +315,6 @@ const UserManagement = () => {
                   {departments.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
                 </select>
               </div>
-
-              {/* Yearly targets — only for new Counsellor creation */}
-              {!editingUser && form.role === 'COUNSELLOR' && (
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setShowTargets((v) => !v)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <span>Set Yearly Targets (optional)</span>
-                    {showTargets ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-                  {showTargets && (
-                    <div className="p-4 space-y-3">
-                      <p className="text-xs text-gray-400">Enter yearly totals. Monthly = ÷12 · Daily = ÷300 (25 days × 12 months)</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {TARGET_FIELDS.map((f) => {
-                          const y = Number(targetForm[f.key]) || 0;
-                          return (
-                            <div key={f.key}>
-                              <label className="label text-xs">
-                                {f.label}
-                                {f.hint && <span className="text-gray-400 ml-1">({f.hint})</span>}
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                placeholder="Yearly"
-                                className="input-field text-sm"
-                                value={targetForm[f.key]}
-                                onChange={(e) => setTargetForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                              />
-                              {y > 0 && (
-                                <p className="text-xs text-gray-400 mt-0.5">
-                                  {round1(y / 12)}/mo · {Math.round(y / TOTAL_DAYS)}/day
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </form>
             <div className="flex gap-3 p-5 border-t border-gray-200 dark:border-gray-700">
               <button onClick={handleSubmit} className="btn-primary flex-1" disabled={saving}>

@@ -1,41 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, TrendingUp, CheckCircle, Clock, Plus, CheckCircle2, AlertCircle, XCircle, ClipboardList } from 'lucide-react';
+import { FileText, TrendingUp, CheckCircle, Clock, Plus, ClipboardList } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import KPICard from '../components/dashboard/KPICard';
 import PerformanceChart from '../components/dashboard/PerformanceChart';
 import RecentReports from '../components/dashboard/RecentReports';
 import TrackerSummary from '../components/dashboard/TrackerSummary';
+import CountryTargetProgress from '../components/dashboard/CountryTargetProgress';
 import { reportsAPI } from '../api/reports';
 import { targetsAPI } from '../api/targets';
 import { PERIODS } from '../utils/constants';
-
-// Daily target fields — only first 3 have actuals from daily reports currently
-const DAILY_TARGET_FIELDS = [
-  { key: 'profiles',        label: 'Profiles',           tracked: true },
-  { key: 'wt',              label: 'WT',                 tracked: true },
-  { key: 'visaServices',    label: 'Visa Services',      tracked: true },
-  { key: 'sop',             label: 'SOP',                tracked: false },
-  { key: 'educationLoan',   label: 'Education Loan',     tracked: false },
-  { key: 'gic',             label: 'GIC',                tracked: false },
-  { key: 'blockAccount',    label: 'Block Account',      tracked: false },
-  { key: 'forexRemittance', label: 'Forex/Remittance',   tracked: false },
-  { key: 'insurance',       label: 'Insurance',          tracked: false },
-];
-
-const TOTAL_DAYS = 25 * 12; // 300
-const round2 = (n) => Math.round(n * 100) / 100;
-
-const todayActualsFromReport = (report) => {
-  if (!report) return {};
-  const profile = Array.isArray(report.tasks?.profile) ? report.tasks.profile : [];
-  return {
-    // Use achieved (EOD) if filled, else fall back to committed (morning)
-    profiles:     profile.reduce((s, r) => s + (Number(r?.achieved) || Number(r?.committed) || 0), 0),
-    wt:           profile.reduce((s, r) => s + (Number(r?.wt)       || 0), 0),
-    visaServices: profile.reduce((s, r) => s + (Number(r?.visa)     || 0), 0),
-  };
-};
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -45,8 +19,8 @@ const Dashboard = () => {
   const [recentReports, setRecentReports] = useState([]);
   const [period, setPeriod]             = useState('monthly');
   const [loading, setLoading]           = useState(true);
-  // Counsellor-only daily target state
-  const [dailyTarget, setDailyTarget]   = useState(null);
+  // Counsellor-only monthly target state
+  const [countries, setCountries]       = useState([]);
   const [todayReport, setTodayReport]   = useState(null);
   const [targetLoading, setTargetLoading] = useState(false);
 
@@ -73,7 +47,7 @@ const Dashboard = () => {
     fetchData();
   }, [period, user.role]);
 
-  // Fetch daily target + today's report for Counsellor only
+  // Fetch this month's targets + today's report for Counsellor only
   useEffect(() => {
     if (user.role !== 'COUNSELLOR') return;
     const now = new Date();
@@ -83,7 +57,7 @@ const Dashboard = () => {
       reportsAPI.getMy({ period: 'daily', limit: 1 }),
     ])
       .then(([tRes, rRes]) => {
-        setDailyTarget(tRes.data.data?.target || null);
+        setCountries(tRes.data.data?.countries || []);
         setTodayReport(rRes.data.data?.[0] || null);
       })
       .catch(() => {})
@@ -123,10 +97,10 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* ── Daily Target Checklist (Counsellor only) ── */}
+      {/* ── Monthly Target Progress (Counsellor only) ── */}
       {user?.role === 'COUNSELLOR' && (
-        <DailyTargetCard
-          target={dailyTarget}
+        <MonthlyTargetCard
+          countries={countries}
           todayReport={todayReport}
           loading={targetLoading}
           onSubmit={() => navigate('/submit-report')}
@@ -136,7 +110,7 @@ const Dashboard = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard title="Total Reports" value={analyticsSummary.totalReports} icon={FileText} color="blue" subtitle={`For selected period`} />
-        <KPICard title="Applications" value={analyticsSummary.totalTasks} icon={TrendingUp} color="green" />
+        <KPICard title="Admissions" value={analyticsSummary.totalTasks} icon={TrendingUp} color="green" />
         <KPICard title="Submitted" value={analyticsSummary.submittedCount} icon={CheckCircle} color="purple" />
         <KPICard title="Modified" value={analyticsSummary.modifiedCount} icon={Clock} color="yellow" />
       </div>
@@ -168,38 +142,20 @@ const Dashboard = () => {
   );
 };
 
-const DailyTargetCard = ({ target, todayReport, loading, onSubmit }) => {
+const MonthlyTargetCard = ({ countries, todayReport, loading, onSubmit }) => {
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const actuals = todayActualsFromReport(todayReport);
   const reportedAt = todayReport
     ? new Date(todayReport.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
     : null;
 
-  const StatusIcon = ({ actual, target: t, tracked }) => {
-    if (!tracked) return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
-    if (t <= 0)   return <span className="text-xs text-gray-400">No target</span>;
-    if (actual >= t)
-      return <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />;
-    if (actual >= t * 0.7)
-      return <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0" />;
-    return <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />;
-  };
-
-  const allTrackedDone = !loading && target && DAILY_TARGET_FIELDS
-    .filter((f) => f.tracked && (target[f.key] || 0) > 0)
-    .every((f) => (actuals[f.key] || 0) >= round2((target[f.key] || 0) / TOTAL_DAYS));
-
   return (
-    <div className={`card p-5 border-l-4 ${allTrackedDone ? 'border-green-500' : 'border-primary-500'}`}>
+    <div className="card p-5 border-l-4 border-primary-500">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div>
           <div className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-            <h2 className="text-sm font-bold text-gray-800 dark:text-white">Today's Target Checklist</h2>
-            {allTrackedDone && (
-              <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-semibold">All Done! 🎉</span>
-            )}
+            <h2 className="text-sm font-bold text-gray-800 dark:text-white">This Month's Targets</h2>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">{today}</p>
         </div>
@@ -216,45 +172,8 @@ const DailyTargetCard = ({ target, todayReport, loading, onSubmit }) => {
 
       {loading ? (
         <div className="flex items-center justify-center py-6 text-sm text-gray-400">Loading targets…</div>
-      ) : !target ? (
-        <p className="text-sm text-gray-400 text-center py-4">No targets set yet — ask your admin to set yearly targets.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {DAILY_TARGET_FIELDS.map((f) => {
-            const dailyT = Math.round((target[f.key] || 0) / TOTAL_DAYS);
-            const actual = f.tracked ? (actuals[f.key] ?? 0) : null;
-            const pct    = f.tracked && dailyT > 0 ? Math.min(Math.round((actual / dailyT) * 100), 100) : 0;
-            const barColor = pct >= 100 ? 'bg-green-500' : pct >= 70 ? 'bg-yellow-400' : 'bg-red-400';
-
-            return (
-              <div
-                key={f.key}
-                className={`flex items-center gap-3 p-2.5 rounded-lg ${
-                  f.tracked
-                    ? 'bg-gray-50 dark:bg-gray-700/40'
-                    : 'bg-gray-50/50 dark:bg-gray-800/30 opacity-60'
-                }`}
-              >
-                <StatusIcon actual={actual} target={dailyT} tracked={f.tracked} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{f.label}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 ml-1 flex-shrink-0">
-                      {f.tracked ? `${actual} / ${dailyT}` : `Target: ${dailyT}`}
-                    </p>
-                  </div>
-                  {f.tracked && dailyT > 0 ? (
-                    <div className="h-1.5 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden">
-                      <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  ) : (
-                    <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-700" />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <CountryTargetProgress countries={countries} emptyMessage="No targets set yet — ask your admin to set this month's targets." />
       )}
     </div>
   );

@@ -5,25 +5,23 @@
 const COUNTRIES = ['Canada', 'UK', 'USA', 'Germany', 'Dubai', 'Europe'];
 
 // Section 1 – Profile grid columns (per country). `num: true` => aggregated as a sum.
+// coachingAchieved / admissionAchieved / revenueAchieved are entered daily and roll up
+// against that country's monthly Target (see models/Target.js) — the target itself is
+// not stored on the report, it's fetched separately for reference.
 const PROFILE_COLUMNS = [
-  { key: 'committed', label: 'Committed (Morning)', num: true },
-  { key: 'achieved', label: 'Achieved (EOD)', num: true },
-  { key: 'wt', label: 'WT', num: true },
-  { key: 'status', label: 'Status', num: false },
-  { key: 'dropOff', label: 'Drop-off %', num: true },
-  { key: 'reason', label: 'Reason (If Any)', num: false },
-  { key: 'applications', label: 'Applications', num: true },
-  { key: 'offer', label: 'Offer', num: true },
-  { key: 'visa', label: 'Visa', num: true },
-  { key: 'rejection', label: 'Rejection', num: true },
-  { key: 'refund', label: 'Refund', num: true },
-  { key: 'defer', label: 'Defer', num: true },
-  { key: 'commission', label: 'Commission', num: true },
+  { key: 'coachingAchieved', label: 'Coaching', num: true, targetKey: 'coachingTarget' },
+  { key: 'admissionAchieved', label: 'Admission', num: true, targetKey: 'admissionTarget' },
+  { key: 'revenueAchieved', label: 'Revenue (₹)', num: true, targetKey: 'revenueTarget' },
+  { key: 'revenueOthers', label: 'Others (₹)', num: true },
+  { key: 'refRevenue', label: 'Ref Revenue (₹)', num: true },
+  { key: 'wireTransferFees', label: 'Wire Transfer / Fees', num: true },
+  { key: 'gotVisa', label: 'Got Visa', num: true },
+  { key: 'applicationFileUpcomingIntake', label: 'App. File (Upcoming Intake)', num: true },
+  { key: 'applicationFileNextIntake', label: 'App. File (Next Intake)', num: true },
+  { key: 'remarks', label: 'Remarks', num: false },
 ];
 
 const PROFILE_NUMERIC_KEYS = PROFILE_COLUMNS.filter((c) => c.num).map((c) => c.key);
-
-const STATUS_OPTIONS = ['Achieved', 'On Track', 'At Risk', 'Missed'];
 
 const FOLLOW_UP_TASKS = [
   'New Applications Follow-up',
@@ -85,7 +83,6 @@ module.exports = {
   COUNTRIES,
   PROFILE_COLUMNS,
   PROFILE_NUMERIC_KEYS,
-  STATUS_OPTIONS,
   FOLLOW_UP_TASKS,
   COMMUNICATION_ITEMS,
   num,

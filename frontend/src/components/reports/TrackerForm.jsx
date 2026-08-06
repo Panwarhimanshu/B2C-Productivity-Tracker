@@ -1,46 +1,22 @@
 import { useMemo } from 'react';
 import {
   PROFILE_COLUMNS,
-  STATUS_OPTIONS,
   COMMUNICATION_ITEMS,
   computeTotals,
 } from '../../constants/tracker';
 
-const TOTAL_DAYS = 300; // 25 days × 12 months
-
 // Controlled editor / viewer for a Counsellor Daily Tracker payload.
-// Props: value (tracker object), onChange(next), readOnly, yearlyTarget ({ profiles, wt } yearly values).
-const TrackerForm = ({ value, onChange, readOnly = false, yearlyTarget = null }) => {
-  const targets = yearlyTarget ? {
-    daily:   { profiles: Math.round((yearlyTarget.profiles || 0) / TOTAL_DAYS), wt: Math.round((yearlyTarget.wt || 0) / TOTAL_DAYS) },
-    monthly: { profiles: Math.round((yearlyTarget.profiles || 0) / 12),         wt: Math.round((yearlyTarget.wt || 0) / 12)         },
-    yearly:  { profiles: yearlyTarget.profiles || 0,                             wt: yearlyTarget.wt || 0                            },
-  } : null;
+// Props: value (tracker object), onChange(next), readOnly,
+// countryTargets ({ [country]: { coachingTarget, admissionTarget, revenueTarget,
+//   coachingAchieved, admissionAchieved, revenueAchieved } } — month-to-date, for reference).
+const TrackerForm = ({ value, onChange, readOnly = false, countryTargets = null }) => {
   const data = value;
   const totals = useMemo(() => computeTotals(data), [data]);
 
   const emit = (next) => onChange && onChange(next);
 
-  const autoStatus = (committed, achieved) => {
-    const c = Number(committed) || 0;
-    const a = Number(achieved) || 0;
-    if (c === 0) return '';
-    if (a >= c) return 'Achieved';
-    return 'At Risk';
-  };
-
   const updateProfile = (idx, key, val) => {
-    const profile = data.profile.map((row, i) => {
-      if (i !== idx) return row;
-      const updated = { ...row, [key]: val };
-      if (key === 'committed' || key === 'achieved') {
-        updated.status = autoStatus(
-          key === 'committed' ? val : row.committed,
-          key === 'achieved'  ? val : row.achieved,
-        );
-      }
-      return updated;
-    });
+    const profile = data.profile.map((row, i) => (i === idx ? { ...row, [key]: val } : row));
     emit({ ...data, profile });
   };
   const updateFollowUp = (idx, key, val) => {
@@ -51,10 +27,15 @@ const TrackerForm = ({ value, onChange, readOnly = false, yearlyTarget = null })
   const updateExtra = (key, val) => emit({ ...data, extraInitiatives: { ...data.extraInitiatives, [key]: val } });
 
   const COL_GROUP = {
-    committed: 'blue', achieved: 'green', wt: 'green',
-    status: 'amber', dropOff: 'amber', reason: 'amber',
-    applications: 'violet', offer: 'violet', visa: 'violet',
-    rejection: 'violet', refund: 'violet', defer: 'violet', commission: 'violet',
+    coachingAchieved: 'blue',
+    admissionAchieved: 'green',
+    revenueAchieved: 'violet',
+    revenueOthers: 'violet',
+    refRevenue: 'violet',
+    wireTransferFees: 'amber',
+    gotVisa: 'green',
+    applicationFileUpcomingIntake: 'blue',
+    applicationFileNextIntake: 'blue',
   };
   const COL_HEADER_CLS = {
     blue:   'bg-blue-50   dark:bg-blue-900/30   text-blue-700   dark:text-blue-300',
@@ -62,32 +43,8 @@ const TrackerForm = ({ value, onChange, readOnly = false, yearlyTarget = null })
     amber:  'bg-amber-50  dark:bg-amber-900/30  text-amber-700  dark:text-amber-300',
     violet: 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300',
   };
-  const STATUS_CLS = {
-    'Achieved': 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700',
-    'On Track': 'bg-blue-100  dark:bg-blue-900/40  text-blue-700  dark:text-blue-300  border-blue-200  dark:border-blue-700',
-    'At Risk':  'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700',
-    '':         'bg-gray-50   dark:bg-gray-700      text-gray-400                      border-gray-200  dark:border-gray-600',
-  };
 
   const cellInput = (val, onChangeVal, type = 'number') => {
-    if (type === 'status') {
-      const cls = STATUS_CLS[val || ''] || STATUS_CLS[''];
-      if (readOnly) {
-        return val
-          ? <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${cls}`}>{val}</span>
-          : <span className="text-gray-300 dark:text-gray-600">—</span>;
-      }
-      return (
-        <select
-          className={`text-[11px] font-semibold border rounded-full px-2 py-0.5 cursor-pointer outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${cls}`}
-          value={val || ''}
-          onChange={(e) => onChangeVal(e.target.value)}
-        >
-          <option value="">—</option>
-          {STATUS_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
-      );
-    }
     if (readOnly) {
       return <span className="text-gray-700 dark:text-gray-300 font-medium">{val !== '' && val != null ? val : '—'}</span>;
     }
@@ -113,79 +70,9 @@ const TrackerForm = ({ value, onChange, readOnly = false, yearlyTarget = null })
 
   return (
     <div className="space-y-6">
-      {/* Application Targets */}
-      <div className="card p-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-4">Application Targets</p>
-        {targets ? (
-          <div className="grid grid-cols-3 gap-3">
-            {/* Daily */}
-            <div className="rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 p-4">
-              <p className="text-xs font-semibold text-primary-500 dark:text-primary-400 uppercase tracking-wider mb-3 text-center">Daily</p>
-              <div className="flex items-stretch">
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Profile</p>
-                  <p className="text-3xl font-bold text-primary-600 dark:text-primary-400 leading-none">{targets.daily.profiles}</p>
-                </div>
-                <div className="w-px bg-primary-200 dark:bg-primary-700 mx-3" />
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Wire Transfer</p>
-                  <p className="text-3xl font-bold text-primary-600 dark:text-primary-400 leading-none">{targets.daily.wt}</p>
-                </div>
-              </div>
-            </div>
-            {/* Monthly */}
-            <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4">
-              <p className="text-xs font-semibold text-blue-500 dark:text-blue-400 uppercase tracking-wider mb-3 text-center">Monthly</p>
-              <div className="flex items-stretch">
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Profile</p>
-                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 leading-none">{targets.monthly.profiles}</p>
-                </div>
-                <div className="w-px bg-blue-200 dark:bg-blue-700 mx-3" />
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Wire Transfer</p>
-                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 leading-none">{targets.monthly.wt}</p>
-                </div>
-              </div>
-            </div>
-            {/* Yearly */}
-            <div className="rounded-xl bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 p-4">
-              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center">Yearly</p>
-              <div className="flex items-stretch">
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Profile</p>
-                  <p className="text-3xl font-bold text-gray-700 dark:text-gray-200 leading-none">{targets.yearly.profiles}</p>
-                </div>
-                <div className="w-px bg-gray-300 dark:bg-gray-600 mx-3" />
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Wire Transfer</p>
-                  <p className="text-3xl font-bold text-gray-700 dark:text-gray-200 leading-none">{targets.yearly.wt}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Daily Application Target</p>
-            {readOnly ? (
-              <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">{data.dailyApplicationTarget || '-'}</span>
-            ) : (
-              <input
-                type="number"
-                min={0}
-                className="input-field w-32"
-                value={data.dailyApplicationTarget ?? ''}
-                onChange={(e) => emit({ ...data, dailyApplicationTarget: e.target.value })}
-                placeholder="Enter target"
-              />
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Section 1: Profile grid */}
       <div className="card p-4">
-        <SectionTitle hint="Daily commitment vs actual, per country">Section 1 · Profile</SectionTitle>
+        <SectionTitle hint="Monthly target for reference · fill today's achieved figures per country">Section 1 · Profile</SectionTitle>
         <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
           <table className="text-xs w-full border-collapse">
             <thead>
@@ -201,18 +88,28 @@ const TrackerForm = ({ value, onChange, readOnly = false, yearlyTarget = null })
               </tr>
             </thead>
             <tbody>
-              {data.profile.map((row, idx) => (
-                <tr key={row.country} className="group hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors border-b border-gray-100 dark:border-gray-700/60 last:border-0">
-                  <td className="px-3 py-2.5 sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-primary-50/40 dark:group-hover:bg-primary-900/10 font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap border-r border-gray-100 dark:border-gray-700 transition-colors">
-                    {row.country}
-                  </td>
-                  {PROFILE_COLUMNS.map((c) => (
-                    <td key={c.key} className="px-2 py-2 text-center">
-                      {cellInput(row[c.key], (v) => updateProfile(idx, c.key, v), c.type)}
+              {data.profile.map((row, idx) => {
+                const ct = countryTargets?.[row.country];
+                return (
+                  <tr key={row.country} className="group hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors border-b border-gray-100 dark:border-gray-700/60 last:border-0">
+                    <td className="px-3 py-2.5 sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-primary-50/40 dark:group-hover:bg-primary-900/10 font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap border-r border-gray-100 dark:border-gray-700 transition-colors">
+                      {row.country}
                     </td>
-                  ))}
-                </tr>
-              ))}
+                    {PROFILE_COLUMNS.map((c) => (
+                      <td key={c.key} className="px-2 py-2 text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          {cellInput(row[c.key], (v) => updateProfile(idx, c.key, v), c.type)}
+                          {c.targetKey && ct && (
+                            <span className="text-[9px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                              Target {ct[c.targetKey] ?? 0} · MTD {ct[c.key] ?? 0}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-600">
@@ -356,19 +253,18 @@ const TrackerForm = ({ value, onChange, readOnly = false, yearlyTarget = null })
       <div className="card p-5">
         <SectionTitle hint="Totals auto-calculated from Section 1">Summary</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          {['applications', 'offer', 'wt', 'visa', 'rejection', 'refund', 'defer', 'commission'].map((k) => {
-            const label = PROFILE_COLUMNS.find((c) => c.key === k)?.label || k;
-            const val = totals[k] ?? 0;
+          {PROFILE_COLUMNS.filter((c) => c.type === 'number').map((c) => {
+            const val = totals[c.key] ?? 0;
             const positive = val > 0;
             return (
-              <div key={k} className={`rounded-xl border px-3 py-2.5 flex flex-col gap-0.5 transition-colors ${
+              <div key={c.key} className={`rounded-xl border px-3 py-2.5 flex flex-col gap-0.5 transition-colors ${
                 positive
                   ? 'bg-violet-50 dark:bg-violet-900/20 border-violet-100 dark:border-violet-800'
                   : 'bg-gray-50 dark:bg-gray-700/40 border-gray-200 dark:border-gray-700'
               }`}>
                 <p className={`text-[10px] font-semibold uppercase tracking-wide ${
                   positive ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'
-                }`}>{label}</p>
+                }`}>{c.label}</p>
                 <p className={`text-2xl font-bold leading-none ${
                   positive ? 'text-violet-700 dark:text-violet-300' : 'text-gray-300 dark:text-gray-600'
                 }`}>{val}</p>

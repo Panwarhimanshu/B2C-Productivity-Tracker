@@ -4,40 +4,9 @@ import { reportsAPI } from '../../api/reports';
 import { targetsAPI } from '../../api/targets';
 import KPICard from '../../components/dashboard/KPICard';
 import PerformanceChart from '../../components/dashboard/PerformanceChart';
+import CountryTargetProgress from '../../components/dashboard/CountryTargetProgress';
 import { PERIODS } from '../../utils/constants';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-
-const TARGET_FIELDS = [
-  { key: 'profiles',        label: 'Profiles' },
-  { key: 'wt',              label: 'WT' },
-  { key: 'visaServices',    label: 'Visa Services',      hint: '25% of WT' },
-  { key: 'sop',             label: 'SOP',                hint: '15% of Profiles' },
-  { key: 'educationLoan',   label: 'Education Loan',     hint: '25% of WT' },
-  { key: 'gic',             label: 'GIC',                hint: '50% of Canada WT' },
-  { key: 'blockAccount',    label: 'Block Account',      hint: '50% of Germany WT' },
-  { key: 'forexRemittance', label: 'Forex / Remittance', hint: '5 / Month' },
-  { key: 'insurance',       label: 'Insurance',          hint: '2 / Month' },
-];
-
-const TOTAL_DAYS = 25 * 12;
-const round1 = (n) => Math.round(n * 10) / 10;
-const round2 = (n) => Math.round(n * 100) / 100;
-
-const ProgressBar = ({ actual, target }) => {
-  const pct = target > 0 ? Math.min(Math.round((actual / target) * 100), 100) : 0;
-  const color = pct >= 100 ? 'bg-green-500' : pct >= 60 ? 'bg-yellow-400' : 'bg-red-400';
-  return (
-    <div>
-      <div className="flex justify-between text-xs mb-1">
-        <span className="font-semibold text-gray-700 dark:text-gray-300">{actual} / {target}</span>
-        <span className={`font-bold ${pct >= 100 ? 'text-green-600' : pct >= 60 ? 'text-yellow-600' : 'text-red-500'}`}>{pct}%</span>
-      </div>
-      <div className="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-};
 
 const now = new Date();
 
@@ -45,9 +14,8 @@ const Performance = () => {
   const [analytics, setAnalytics] = useState(null);
   const [period, setPeriod] = useState('monthly');
   const [loading, setLoading] = useState(true);
-  const [targetData, setTargetData] = useState(null);
+  const [countries, setCountries] = useState([]);
   const [targetLoading, setTargetLoading] = useState(true);
-  const [view, setView] = useState('monthly'); // 'daily' | 'monthly' | 'yearly'
 
   const month = now.getMonth() + 1;
   const year  = now.getFullYear();
@@ -62,32 +30,12 @@ const Performance = () => {
   useEffect(() => {
     setTargetLoading(true);
     targetsAPI.getMyWithActuals(month, year)
-      .then((res) => setTargetData(res.data.data))
-      .catch(() => setTargetData(null))
+      .then((res) => setCountries(res.data.data?.countries || []))
+      .catch(() => setCountries([]))
       .finally(() => setTargetLoading(false));
   }, []);
 
-  const summary   = analytics?.summary || {};
-  const target    = targetData?.target;
-  const actuals   = targetData?.actuals || {};
-
-  const getTarget = (fieldKey) => {
-    if (!target) return 0;
-    const y = target[fieldKey] || 0;
-    if (view === 'yearly')  return y;
-    if (view === 'monthly') return round1(y / 12);
-    return Math.round(y / TOTAL_DAYS);
-  };
-
-  const getActual = (fieldKey) => {
-    // Actuals are monthly (from this month's reports)
-    const monthly = actuals[fieldKey] || 0;
-    if (view === 'monthly') return monthly;
-    if (view === 'yearly')  return monthly; // can't know ytd without full range query
-    return round2(monthly / 25);            // rough daily from monthly actuals
-  };
-
-  const viewLabel = { daily: 'Daily', monthly: 'Monthly', yearly: 'Yearly' };
+  const summary = analytics?.summary || {};
 
   return (
     <div className="space-y-6">
@@ -100,71 +48,17 @@ const Performance = () => {
 
       {/* Targets card */}
       <div className="card p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Targets — {new Date(year, month - 1).toLocaleString('default', { month: 'long' })} {year}
-            </h2>
-            <p className="text-xs text-gray-400 mt-0.5">25 working days/month · 300 days/year</p>
-          </div>
-          {/* Period toggle */}
-          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-xs">
-            {['daily', 'monthly', 'yearly'].map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`px-2.5 py-1.5 capitalize transition-colors ${
-                  view === v
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                {viewLabel[v]}
-              </button>
-            ))}
-          </div>
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Targets — {new Date(year, month - 1).toLocaleString('default', { month: 'long' })} {year}
+          </h2>
+          <p className="text-xs text-gray-400 mt-0.5">Coaching / Admission / Revenue, per country · achieved is month-to-date</p>
         </div>
 
         {targetLoading ? (
           <LoadingSpinner className="py-6" />
-        ) : !target ? (
-          <p className="text-sm text-gray-400 text-center py-4">No targets set for this year yet.</p>
         ) : (
-          <>
-            {/* Summary row: yearly → monthly → daily */}
-            {view === 'monthly' && (
-              <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-xs text-blue-700 dark:text-blue-300">
-                Monthly targets auto-calculated from yearly ÷ 12
-              </div>
-            )}
-            {view === 'daily' && (
-              <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-xs text-blue-700 dark:text-blue-300">
-                Daily targets auto-calculated from yearly ÷ 300 (25 days × 12 months)
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {TARGET_FIELDS.map((f) => {
-                const t = getTarget(f.key);
-                const a = getActual(f.key);
-                return (
-                  <div key={f.key} className="bg-gray-50 dark:bg-gray-700/40 rounded-lg p-3">
-                    <div className="mb-2">
-                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{f.label}</p>
-                      {f.hint && <p className="text-xs text-gray-400">({f.hint})</p>}
-                    </div>
-                    <ProgressBar actual={a} target={t} />
-                    {/* Show all three derived numbers */}
-                    <div className="mt-1.5 flex gap-3 text-xs text-gray-400">
-                      <span>Y: {target[f.key] || 0}</span>
-                      <span>M: {round1((target[f.key] || 0) / 12)}</span>
-                      <span>D: {Math.round((target[f.key] || 0) / TOTAL_DAYS)}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
+          <CountryTargetProgress countries={countries} />
         )}
       </div>
 

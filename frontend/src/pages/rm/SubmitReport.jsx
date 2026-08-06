@@ -9,8 +9,6 @@ import { getErrorMessage } from '../../utils/helpers';
 import TrackerForm from '../../components/reports/TrackerForm';
 import toast from 'react-hot-toast';
 
-const TOTAL_DAYS = 25 * 12; // 300
-
 const SubmitReport = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -18,17 +16,14 @@ const SubmitReport = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [yearlyTarget, setYearlyTarget] = useState(null);
+  const [countryTargets, setCountryTargets] = useState(null);
 
   useEffect(() => {
     const now = new Date();
     targetsAPI.getMyWithActuals(now.getMonth() + 1, now.getFullYear())
       .then((res) => {
-        const t = res.data.data?.target;
-        if (!t) return;
-        setYearlyTarget(t);
-        const daily = Math.round((t.profiles || 0) / TOTAL_DAYS);
-        setTracker((prev) => ({ ...prev, dailyApplicationTarget: daily }));
+        const countries = res.data.data?.countries || [];
+        setCountryTargets(Object.fromEntries(countries.map((c) => [c.country, c])));
       })
       .catch(() => {});
   }, []);
@@ -112,7 +107,7 @@ const SubmitReport = () => {
           </div>
         </div>
 
-        <TrackerForm value={tracker} onChange={setTracker} yearlyTarget={yearlyTarget} />
+        <TrackerForm value={tracker} onChange={setTracker} countryTargets={countryTargets} />
 
         <div className="flex gap-3">
           <button type="submit" className="btn-primary" disabled={submitting}>

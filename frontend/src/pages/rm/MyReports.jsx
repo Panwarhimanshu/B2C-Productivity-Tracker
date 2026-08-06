@@ -59,7 +59,7 @@ const MyReports = () => {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                 <tr>
-                  {['Date', 'Applications', 'Status', 'Modified By', 'Submitted At', 'Actions'].map((h) => (
+                  {['Date', 'Admissions', 'Status', 'Modified By', 'Submitted At', 'Actions'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-400">{h}</th>
                   ))}
                 </tr>

@@ -15,7 +15,7 @@ const EditReportModal = ({ report, onClose, onSaved, readOnly = false }) => {
   const [remarks, setRemarks] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [yearlyTarget, setYearlyTarget] = useState(null);
+  const [countryTargets, setCountryTargets] = useState(null);
 
   useEffect(() => {
     if (!report) return;
@@ -27,8 +27,8 @@ const EditReportModal = ({ report, onClose, onSaved, readOnly = false }) => {
     const d = new Date(report.date);
     targetsAPI.getForUser(uid, d.getMonth() + 1, d.getFullYear())
       .then((res) => {
-        const t = res.data.data?.target;
-        if (t) setYearlyTarget(t);
+        const countries = res.data.data?.countries || [];
+        setCountryTargets(Object.fromEntries(countries.map((c) => [c.country, c])));
       })
       .catch(() => {});
   }, [report]);
@@ -76,7 +76,7 @@ const EditReportModal = ({ report, onClose, onSaved, readOnly = false }) => {
             </div>
           )}
 
-          <TrackerForm value={tracker} onChange={setTracker} readOnly={readOnly} yearlyTarget={yearlyTarget} />
+          <TrackerForm value={tracker} onChange={setTracker} readOnly={readOnly} countryTargets={countryTargets} />
 
           <div>
             <label className="label">Modifier Remarks</label>
@@ -127,7 +127,7 @@ const EditReportModal = ({ report, onClose, onSaved, readOnly = false }) => {
           </div>
           <p className="text-xs text-gray-400">Generated {formatDate(new Date(), 'dd MMM yyyy, hh:mm a')}</p>
         </div>
-        <TrackerForm value={tracker} onChange={() => {}} readOnly yearlyTarget={yearlyTarget} />
+        <TrackerForm value={tracker} onChange={() => {}} readOnly countryTargets={countryTargets} />
         <div className="mt-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Modifier Remarks</p>
           <p className="text-sm text-gray-800">{remarks || '-'}</p>
