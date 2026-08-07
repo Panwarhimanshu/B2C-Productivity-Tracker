@@ -9,7 +9,6 @@ import Profile from './pages/Profile';
 import SubmitReport from './pages/rm/SubmitReport';
 import MyReports from './pages/rm/MyReports';
 import Performance from './pages/rm/Performance';
-import OrgDashboard from './pages/hod/OrgDashboard';
 import UserManagement from './pages/hod/UserManagement';
 import DepartmentManagement from './pages/hod/DepartmentManagement';
 import AllReports from './pages/hod/AllReports';
@@ -88,19 +87,15 @@ const App = () => {
             path="/report-logs"
             element={<ProtectedRoute allowedRoles={['HOD', 'SUPER_ADMIN']}><ReportLogs /></ProtectedRoute>}
           />
+          <Route
+            path="/department-management"
+            element={<ProtectedRoute allowedRoles={['COUNSELLOR', 'HOD', 'SUPER_ADMIN']}><DepartmentManagement /></ProtectedRoute>}
+          />
 
           {/* Super Admin Routes */}
           <Route
-            path="/org-dashboard"
-            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><OrgDashboard /></ProtectedRoute>}
-          />
-          <Route
             path="/user-management"
             element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><UserManagement /></ProtectedRoute>}
-          />
-          <Route
-            path="/department-management"
-            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><DepartmentManagement /></ProtectedRoute>}
           />
           <Route
             path="/target-management"

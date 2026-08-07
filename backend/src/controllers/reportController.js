@@ -1,5 +1,7 @@
 const DailyReport = require('../models/DailyReport');
 const User = require('../models/User');
+const Department = require('../models/Department');
+const Target = require('../models/Target');
 const AuditLog = require('../models/AuditLog');
 const Notification = require('../models/Notification');
 const { exportToExcel } = require('../services/exportService');
@@ -10,6 +12,8 @@ const {
   PROFILE_NUMERIC_KEYS,
   COMMUNICATION_ITEMS,
   computeReportTotals,
+  validateCoachingProducts,
+  countriesForDepartment,
 } = require('../config/tracker');
 
 // Headline count shown in lists/cards: total admissions achieved across countries.
@@ -58,6 +62,11 @@ const submitReport = async (req, res, next) => {
     const { date, tasks, taskFields, remarks } = req.body;
     const reportDate = new Date(date);
     reportDate.setHours(0, 0, 0, 0);
+
+    const productCheck = validateCoachingProducts(tasks);
+    if (!productCheck.valid) {
+      return res.status(400).json({ success: false, message: productCheck.message });
+    }
 
     const existing = await DailyReport.findOne({ userId: req.user._id, date: reportDate });
     if (existing) {
@@ -123,15 +132,15 @@ const getAllReports = async (req, res, next) => {
     const { startDate, endDate } = getDateRange(period);
 
     const userFilter = { isActive: true };
-    if (departmentId) userFilter.departmentId = departmentId;
-
-    let userIds;
-    if (userId) {
-      userIds = [userId];
-    } else {
-      const users = await User.find(userFilter).select('_id');
-      userIds = users.map((u) => u._id);
+    if (userId) userFilter._id = userId;
+    if (req.user.role === 'HOD') {
+      userFilter.departmentId = req.user.departmentId;
+    } else if (departmentId) {
+      userFilter.departmentId = departmentId;
     }
+
+    const users = await User.find(userFilter).select('_id');
+    const userIds = users.map((u) => u._id);
 
     const filter = { userId: { $in: userIds }, date: { $gte: startDate, $lte: endDate } };
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -174,9 +183,23 @@ const updateReport = async (req, res, next) => {
       }
     }
 
-    const before = report.toObject();
+    if (req.user.role === 'HOD') {
+      const reportOwner = await User.findById(report.userId).select('departmentId');
+      if (!reportOwner || String(reportOwner.departmentId) !== String(req.user.departmentId)) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
     const { tasks, taskFields, remarks } = req.body;
 
+    if (tasks) {
+      const productCheck = validateCoachingProducts(tasks);
+      if (!productCheck.valid) {
+        return res.status(400).json({ success: false, message: productCheck.message });
+      }
+    }
+
+    const before = report.toObject();
     report.tasks = tasks ?? report.tasks;
     report.taskFields = taskFields ?? report.taskFields;
     report.remarks = remarks ?? report.remarks;
@@ -210,12 +233,14 @@ const getAnalytics = async (req, res, next) => {
     const { period = 'monthly' } = req.query;
     const { startDate, endDate } = getDateRange(period);
 
-    let userFilter = {};
+    const userFilter = { isActive: true };
     if (req.user.role === 'COUNSELLOR') {
-      userFilter = { _id: req.user._id };
+      userFilter._id = req.user._id;
+    } else if (req.user.role === 'HOD') {
+      userFilter.departmentId = req.user.departmentId;
     }
 
-    const users = await User.find({ ...userFilter, isActive: true }).select('_id name employeeId');
+    const users = await User.find(userFilter).select('_id name employeeId');
     const userIds = users.map((u) => u._id);
 
     const reports = await DailyReport.find({
@@ -261,9 +286,14 @@ const getTrackerSummary = async (req, res, next) => {
     const userFilter = { isActive: true };
     if (req.user.role === 'COUNSELLOR') {
       userFilter._id = req.user._id;
+    } else {
+      if (userId) userFilter._id = userId;
+      if (req.user.role === 'HOD') {
+        userFilter.departmentId = req.user.departmentId;
+      } else if (departmentId) {
+        userFilter.departmentId = departmentId;
+      }
     }
-    if (departmentId) userFilter.departmentId = departmentId;
-    if (userId) userFilter._id = userId;
 
     const scopedUsers = await User.find(userFilter).select('_id');
     const userIds = scopedUsers.map((u) => u._id);
@@ -273,14 +303,30 @@ const getTrackerSummary = async (req, res, next) => {
       date: { $gte: startDate, $lte: endDate },
     }).select('tasks').lean();
 
+    // Only show country rows relevant to the viewer's own department (Counsellor/HOD are
+    // scoped to their single mapped country; Super Admin sees all, or one via ?departmentId).
+    let scopeCountries = COUNTRIES;
+    if (req.user.role === 'COUNSELLOR' || req.user.role === 'HOD') {
+      if (req.user.departmentId) {
+        const dept = await Department.findById(req.user.departmentId).select('name').lean();
+        scopeCountries = countriesForDepartment(dept?.name);
+      }
+    } else if (departmentId) {
+      const dept = await Department.findById(departmentId).select('name').lean();
+      scopeCountries = countriesForDepartment(dept?.name);
+    }
+
     // Per-country accumulator + flat KPI totals.
-    const perCountry = COUNTRIES.reduce((acc, c) => {
-      acc[c] = PROFILE_NUMERIC_KEYS.reduce((o, k) => ({ ...o, [k]: 0 }), { country: c });
+    const perCountry = scopeCountries.reduce((acc, c) => {
+      acc[c] = PROFILE_NUMERIC_KEYS.reduce((o, k) => ({ ...o, [k]: 0 }), {
+        country: c, coachingTarget: 0, admissionTarget: 0, revenueTarget: 0,
+      });
       return acc;
     }, {});
     const kpiTotals = PROFILE_NUMERIC_KEYS.reduce((o, k) => ({ ...o, [k]: 0 }), {});
-    const communication = COMMUNICATION_ITEMS.reduce((o, c) => ({ ...o, [c.key]: 0 }), {});
-    const followUp = { committed: 0, completed: 0 };
+    const kpiTargets = { coachingTarget: 0, admissionTarget: 0, revenueTarget: 0 };
+    const communication = COMMUNICATION_ITEMS.filter((c) => !c.options).reduce((o, c) => ({ ...o, [c.key]: 0 }), {});
+    const followUp = { done: 0 };
     const leads = { committed: 0, generated: 0 };
 
     for (const r of reports) {
@@ -297,18 +343,43 @@ const getTrackerSummary = async (req, res, next) => {
         });
       });
       const totals = computeReportTotals(tasks);
-      COMMUNICATION_ITEMS.forEach(({ key }) => { communication[key] += totals.communication[key]; });
-      followUp.committed += totals.followUp.committed;
-      followUp.completed += totals.followUp.completed;
+      COMMUNICATION_ITEMS.filter((c) => !c.options).forEach(({ key }) => { communication[key] += totals.communication[key]; });
+      followUp.done += totals.followUp.done;
       leads.committed += totals.leads.committed;
       leads.generated += totals.leads.generated;
     }
+
+    // This month's Coaching/Admission/Revenue targets, summed per country, so the caller can
+    // show achieved-vs-target status. Always the current calendar month regardless of `period`,
+    // same as the Dashboard's "This Month's Targets" card and Performance page.
+    const now = new Date();
+    const targetMonth = now.getMonth() + 1;
+    const targetYear = now.getFullYear();
+    const monthTargets = await Target.find({
+      userId: { $in: userIds },
+      year: targetYear,
+      month: targetMonth,
+      country: { $in: scopeCountries },
+    }).select('country coachingTarget admissionTarget revenueTarget').lean();
+
+    monthTargets.forEach((t) => {
+      if (!perCountry[t.country]) return;
+      perCountry[t.country].coachingTarget += t.coachingTarget || 0;
+      perCountry[t.country].admissionTarget += t.admissionTarget || 0;
+      perCountry[t.country].revenueTarget += t.revenueTarget || 0;
+      kpiTargets.coachingTarget += t.coachingTarget || 0;
+      kpiTargets.admissionTarget += t.admissionTarget || 0;
+      kpiTargets.revenueTarget += t.revenueTarget || 0;
+    });
 
     res.json({
       success: true,
       data: {
         perCountry: Object.values(perCountry),
         kpiTotals,
+        kpiTargets,
+        targetMonth,
+        targetYear,
         communication,
         followUp,
         leads,
@@ -331,10 +402,16 @@ const exportReports = async (req, res, next) => {
 
     const filter = { date: { $gte: startDate, $lte: endDate } };
 
-    if (userId) {
-      filter.userId = userId;
+    const userFilter = {};
+    if (userId) userFilter._id = userId;
+    if (req.user.role === 'HOD') {
+      userFilter.departmentId = req.user.departmentId;
     } else if (departmentId) {
-      const users = await User.find({ departmentId }).select('_id');
+      userFilter.departmentId = departmentId;
+    }
+
+    if (Object.keys(userFilter).length) {
+      const users = await User.find(userFilter).select('_id');
       filter.userId = { $in: users.map((u) => u._id) };
     }
 
@@ -344,7 +421,57 @@ const exportReports = async (req, res, next) => {
       .sort({ date: -1 })
       .lean();
 
-    const buffer = await exportToExcel(reports);
+    // Monthly target-vs-achieved sheet: always the current calendar month (Targets are
+    // monthly, so "period" here — daily/weekly/etc — doesn't apply to them).
+    const now = new Date();
+    const targetYear = now.getFullYear();
+    const targetMonth = now.getMonth() + 1;
+    const monthStart = new Date(targetYear, targetMonth - 1, 1);
+    const monthEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+
+    const counsellorFilter = { isActive: true, role: 'COUNSELLOR', ...userFilter };
+    const scopedCounsellors = await User.find(counsellorFilter).select('_id name employeeId');
+    const scopedIds = scopedCounsellors.map((u) => u._id);
+
+    const [targets, monthReports] = await Promise.all([
+      Target.find({ userId: { $in: scopedIds }, year: targetYear, month: targetMonth }).lean(),
+      DailyReport.find({ userId: { $in: scopedIds }, date: { $gte: monthStart, $lte: monthEnd } })
+        .select('userId tasks').lean(),
+    ]);
+
+    const achievedMap = {}; // userId -> country -> { coachingAchieved, admissionAchieved, revenueAchieved }
+    monthReports.forEach((r) => {
+      const uid = r.userId.toString();
+      const profile = Array.isArray(r.tasks?.profile) ? r.tasks.profile : [];
+      profile.forEach((row) => {
+        if (!achievedMap[uid]) achievedMap[uid] = {};
+        if (!achievedMap[uid][row.country]) {
+          achievedMap[uid][row.country] = { coachingAchieved: 0, admissionAchieved: 0, revenueAchieved: 0 };
+        }
+        achievedMap[uid][row.country].coachingAchieved += Number(row.coachingAchieved) || 0;
+        achievedMap[uid][row.country].admissionAchieved += Number(row.admissionAchieved) || 0;
+        achievedMap[uid][row.country].revenueAchieved += Number(row.revenueAchieved) || 0;
+      });
+    });
+
+    const targetRows = targets.map((t) => {
+      const uid = t.userId.toString();
+      const user = scopedCounsellors.find((u) => u._id.toString() === uid);
+      const achieved = achievedMap[uid]?.[t.country] || { coachingAchieved: 0, admissionAchieved: 0, revenueAchieved: 0 };
+      return {
+        name: user?.name || 'N/A',
+        employeeId: user?.employeeId || 'N/A',
+        country: t.country,
+        coachingTarget: t.coachingTarget || 0,
+        coachingAchieved: achieved.coachingAchieved,
+        admissionTarget: t.admissionTarget || 0,
+        admissionAchieved: achieved.admissionAchieved,
+        revenueTarget: t.revenueTarget || 0,
+        revenueAchieved: achieved.revenueAchieved,
+      };
+    });
+
+    const buffer = await exportToExcel(reports, { targetRows, targetYear, targetMonth });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=reports_${period}_${Date.now()}.xlsx`);
     res.send(buffer);
@@ -381,15 +508,32 @@ const getReportLogs = async (req, res, next) => {
       filter.performedBy = { $in: matchedUsers.map((u) => u._id) };
     }
 
+    // HOD: only logs for reports owned by counsellors in their own department.
+    let deptOwnerIds = null;
+    if (req.user.role === 'HOD') {
+      const deptUsers = await User.find({ departmentId: req.user.departmentId }).select('_id');
+      deptOwnerIds = new Set(deptUsers.map((u) => u._id.toString()));
+    }
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const [logs, total] = await Promise.all([
+    const [rawLogs, totalMatching] = await Promise.all([
       AuditLog.find(filter)
         .populate('performedBy', 'name email role')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit)),
+        .sort({ createdAt: -1 }),
       AuditLog.countDocuments(filter),
     ]);
+
+    // Filtering by report-owner department has to happen in JS (before/after are Mixed fields),
+    // so pagination is applied after this filter rather than at the query level.
+    const scopedLogs = deptOwnerIds
+      ? rawLogs.filter((l) => {
+          const ownerId = (l.after?.userId || l.before?.userId)?.toString();
+          return ownerId && deptOwnerIds.has(ownerId);
+        })
+      : rawLogs;
+
+    const total = deptOwnerIds ? scopedLogs.length : totalMatching;
+    const logs = scopedLogs.slice(skip, skip + parseInt(limit));
 
     const ownerIds = [...new Set(
       logs.map((l) => (l.after?.userId || l.before?.userId)).filter(Boolean).map(String)

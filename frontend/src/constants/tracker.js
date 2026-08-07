@@ -23,22 +23,23 @@ export const PROFILE_COLUMNS = [
 export const PROFILE_NUMERIC_KEYS = PROFILE_COLUMNS.filter((c) => c.type === 'number').map((c) => c.key);
 
 export const FOLLOW_UP_TASKS = [
-  'New Applications Follow-up',
-  'Offer Letter Updates',
-  'Payment/Wire-Transfer Follow-up',
-  'Visa Status Follow-up',
-  'Defer & Refund Follow-up',
-  'Commission Drive',
-  'Event Promotion',
-  'Agent Activation Activity',
+  'Email Checking',
+  'Got Visa & Fees Payment update in Agent Sheet',
+  'Got Visa Update in App',
+  'Data Update in K-Apply as per the BRD Sheet',
+  'Calling for Loan data & Maintaining Update in the sheet',
+  'Preparing the Visitor Visa File',
+  'Follow up on the ongoing case',
+  'Refund status checking and follow-up if required',
+  'Fees receipt & PAL follow-up',
 ];
 
 export const COMMUNICATION_ITEMS = [
   { key: 'zoomMeetings',    label: 'Zoom Meetings',      linkKey: 'zoomMeetingLink',  linkLabel: 'Recording / Meeting Link' },
   { key: 'callsMade',       label: 'Calls Made',         linkKey: 'callsSheetLink',   linkLabel: 'Google Sheet Link' },
   { key: 'meetings',        label: 'Meetings',           linkKey: 'meetingMomLink',   linkLabel: 'MOM Link' },
-  { key: 'kApplyDiscussion',label: 'K Apply Discussion' },
-  { key: 'whatsappQuery',   label: 'WhatsApp Query' },
+  { key: 'whatsappMessageSent', label: 'WhatsApp Message Sent' },
+  { key: 'taskModuleFilled',    label: 'Task Module Filled', options: ['Yes', 'No', 'Pending'] },
 ];
 
 export const num = (v) => {
@@ -46,14 +47,17 @@ export const num = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-// A blank tracker payload, ready to bind to the form.
-export const emptyTracker = () => ({
-  profile: COUNTRIES.map((country) => {
-    const row = { country };
+// A blank tracker payload, ready to bind to the form. `countries` narrows which country
+// rows appear — defaults to all of them, but callers should pass just the counsellor's
+// mapped country/countries (see countriesForDepartment) so the form isn't cluttered with
+// countries that don't apply to them.
+export const emptyTracker = (countries = COUNTRIES) => ({
+  profile: countries.map((country) => {
+    const row = { country, coachingProducts: [] };
     PROFILE_COLUMNS.forEach((c) => { row[c.key] = ''; });
     return row;
   }),
-  followUpTasks: FOLLOW_UP_TASKS.map((task) => ({ task, committed: '', completed: '', remarks: '' })),
+  followUpTasks: FOLLOW_UP_TASKS.map((task) => ({ task, done: '', remarks: '' })),
   communication: COMMUNICATION_ITEMS.reduce((acc, c) => ({
     ...acc,
     [c.key]: '',
@@ -63,10 +67,28 @@ export const emptyTracker = () => ({
   summary: '',
 });
 
+// Resolve which COUNTRIES a department maps to, by exact (case-insensitive) name match.
+// Falls back to the full COUNTRIES list if the department doesn't correspond to a known
+// country (no department set, or a department not named after a tracked country).
+export const countriesForDepartment = (departmentName) => {
+  if (!departmentName) return COUNTRIES;
+  const match = COUNTRIES.find((c) => c.toLowerCase() === departmentName.toLowerCase());
+  return match ? [match] : COUNTRIES;
+};
+
 // Merge a stored (possibly partial / legacy) tasks object onto the empty shape so the
-// form always has every country row / task / field present.
-export const normalizeTracker = (tasks) => {
-  const base = emptyTracker();
+// form always has every relevant country row / task / field present. `countries` narrows
+// the rows shown, but any country that already has real data in `tasks` is always kept
+// too, so editing an older report never silently drops data outside the narrowed list.
+export const normalizeTracker = (tasks, countries = COUNTRIES) => {
+  const storedCountries = Array.isArray(tasks?.profile)
+    ? tasks.profile
+        .filter((p) => PROFILE_NUMERIC_KEYS.some((k) => num(p?.[k]) > 0) || p?.remarks)
+        .map((p) => p.country)
+    : [];
+  const effectiveCountries = [...new Set([...countries, ...storedCountries])];
+
+  const base = emptyTracker(effectiveCountries);
   if (!tasks || typeof tasks !== 'object') return base;
 
   base.summary = tasks.summary ?? '';
@@ -97,4 +119,23 @@ export const computeTotals = (tasks) => {
     profileTotals[k] = profile.reduce((s, row) => s + num(row?.[k]), 0);
   });
   return profileTotals;
+};
+
+// Each Coaching count requires naming the product sold for that unit — e.g. Coaching = 2
+// means two product names must be filled in for that country. Returns { valid, message }.
+export const validateCoachingProducts = (tasks) => {
+  const profile = Array.isArray(tasks?.profile) ? tasks.profile : [];
+  for (const row of profile) {
+    const count = Math.round(num(row?.coachingAchieved));
+    if (count <= 0) continue;
+    const products = Array.isArray(row?.coachingProducts) ? row.coachingProducts : [];
+    const filled = products.filter((p) => p && p.trim()).length;
+    if (filled < count) {
+      return {
+        valid: false,
+        message: `Enter the product sold for all ${count} Coaching count${count > 1 ? 's' : ''} in ${row.country} (${filled}/${count} filled).`,
+      };
+    }
+  }
+  return { valid: true, message: '' };
 };

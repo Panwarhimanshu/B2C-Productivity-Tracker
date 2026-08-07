@@ -56,8 +56,8 @@
 
 @media print {
   @page {
-    size: A4 landscape;
-    margin: 10mm;
+    size: A4 portrait;
+    margin: 6mm;
   }
   body > #root {
     display: none !important;
@@ -66,5 +66,46 @@
     display: block !important;
     background: #fff;
     color: #111;
+    /* Shrink the whole report down so it fits a single portrait page. */
+    zoom: 0.6;
+  }
+  /* Keep cards, table rows and grid tiles intact instead of letting the
+     browser slice them across a page boundary (was causing tiles/rows to
+     look cut in half / duplicated at the page break). */
+  #print-root .card,
+  #print-root tr,
+  #print-root .grid > div {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  #print-root thead {
+    display: table-header-group;
+  }
+
+  /* Compact spacing everywhere so the report has a real chance of fitting
+     on one page instead of spilling over. */
+  #print-root .space-y-6 > * + * {
+    margin-top: 8px !important;
+  }
+  #print-root .card {
+    padding: 8px !important;
+  }
+  #print-root th,
+  #print-root td {
+    padding: 3px 5px !important;
+  }
+  #print-root .mb-3 {
+    margin-bottom: 4px !important;
+  }
+  #print-root .mb-4,
+  #print-root .mb-5 {
+    margin-bottom: 6px !important;
+  }
+  #print-root .gap-3 {
+    gap: 4px !important;
+  }
+  #print-root .p-4,
+  #print-root .p-5 {
+    padding: 8px !important;
   }
 }

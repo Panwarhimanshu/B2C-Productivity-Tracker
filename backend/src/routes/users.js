@@ -9,7 +9,7 @@ const { validate } = require('../middleware/validate');
 
 router.use(authenticate);
 
-router.get('/', authorize('HOD', 'SUPER_ADMIN'), getUsers);
+router.get('/', authorize('COUNSELLOR', 'HOD', 'SUPER_ADMIN'), getUsers);
 router.get('/:id', authorize('HOD', 'SUPER_ADMIN'), getUserById);
 
 router.post(

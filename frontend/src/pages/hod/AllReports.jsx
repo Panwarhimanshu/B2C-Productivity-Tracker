@@ -3,6 +3,7 @@ import { Download, Edit2, Eye } from 'lucide-react';
 import { reportsAPI } from '../../api/reports';
 import { usersAPI } from '../../api/users';
 import { departmentsAPI } from '../../api/departments';
+import { useAuth } from '../../context/AuthContext';
 import { PERIODS, REPORT_STATUS_COLORS } from '../../utils/constants';
 import { formatDate, downloadBlob, getErrorMessage } from '../../utils/helpers';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -10,6 +11,8 @@ import EditReportModal from '../../components/reports/EditReportModal';
 import toast from 'react-hot-toast';
 
 const AllReports = () => {
+  const { user } = useAuth();
+  const isHOD = user?.role === 'HOD';
   const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -58,15 +61,24 @@ const AllReports = () => {
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">All Reports</h1>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">All Reports</h1>
+          {isHOD && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              Department: {departments.find((d) => d._id === user?.departmentId)?.name || '—'}
+            </p>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
           <select className="input-field w-auto text-sm" value={filters.period} onChange={(e) => setFilter('period', e.target.value)}>
             {PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
-          <select className="input-field w-auto text-sm" value={filters.departmentId} onChange={(e) => setFilter('departmentId', e.target.value)}>
-            <option value="">All Departments</option>
-            {departments.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
-          </select>
+          {!isHOD && (
+            <select className="input-field w-auto text-sm" value={filters.departmentId} onChange={(e) => setFilter('departmentId', e.target.value)}>
+              <option value="">All Departments</option>
+              {departments.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
+            </select>
+          )}
           <select className="input-field w-auto text-sm" value={filters.userId} onChange={(e) => setFilter('userId', e.target.value)}>
             <option value="">All Employees</option>
             {users.map((u) => <option key={u._id} value={u._id}>{u.name}</option>)}

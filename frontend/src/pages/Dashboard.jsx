@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, TrendingUp, CheckCircle, Clock, Plus, ClipboardList } from 'lucide-react';
+import { FileText, TrendingUp, CheckCircle, Clock, Plus, ClipboardList, Users, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import KPICard from '../components/dashboard/KPICard';
 import PerformanceChart from '../components/dashboard/PerformanceChart';
@@ -9,6 +9,8 @@ import TrackerSummary from '../components/dashboard/TrackerSummary';
 import CountryTargetProgress from '../components/dashboard/CountryTargetProgress';
 import { reportsAPI } from '../api/reports';
 import { targetsAPI } from '../api/targets';
+import { usersAPI } from '../api/users';
+import { departmentsAPI } from '../api/departments';
 import { PERIODS } from '../utils/constants';
 
 const Dashboard = () => {
@@ -19,6 +21,8 @@ const Dashboard = () => {
   const [recentReports, setRecentReports] = useState([]);
   const [period, setPeriod]             = useState('monthly');
   const [loading, setLoading]           = useState(true);
+  // Super Admin-only org-wide counts
+  const [orgCounts, setOrgCounts]       = useState({ users: 0, departments: 0 });
   // Counsellor-only monthly target state
   const [countries, setCountries]       = useState([]);
   const [todayReport, setTodayReport]   = useState(null);
@@ -47,6 +51,16 @@ const Dashboard = () => {
     fetchData();
   }, [period, user.role]);
 
+  // Org-wide counts for Super Admin only
+  useEffect(() => {
+    if (user.role !== 'SUPER_ADMIN') return;
+    Promise.all([usersAPI.getAll({ limit: 1 }), departmentsAPI.getAll()])
+      .then(([usersRes, deptRes]) => {
+        setOrgCounts({ users: usersRes.data.pagination?.total || 0, departments: deptRes.data.data?.length || 0 });
+      })
+      .catch(() => {});
+  }, [user.role]);
+
   // Fetch this month's targets + today's report for Counsellor only
   useEffect(() => {
     if (user.role !== 'COUNSELLOR') return;
@@ -72,10 +86,12 @@ const Dashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            Good {getGreeting()}, {user?.name?.split(' ')[0]}!
+            {user?.role === 'SUPER_ADMIN'
+              ? 'Organisation Dashboard'
+              : `Good ${getGreeting()}, ${user?.name?.split(' ')[0]}!`}
           </h1>
           <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-            Here's your performance overview
+            {user?.role === 'SUPER_ADMIN' ? 'Organisation-wide performance overview' : "Here's your performance overview"}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -108,7 +124,13 @@ const Dashboard = () => {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${user?.role === 'SUPER_ADMIN' ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
+        {user?.role === 'SUPER_ADMIN' && (
+          <>
+            <KPICard title="Total Users" value={orgCounts.users} icon={Users} color="blue" />
+            <KPICard title="Active Departments" value={orgCounts.departments} icon={MapPin} color="yellow" />
+          </>
+        )}
         <KPICard title="Total Reports" value={analyticsSummary.totalReports} icon={FileText} color="blue" subtitle={`For selected period`} />
         <KPICard title="Admissions" value={analyticsSummary.totalTasks} icon={TrendingUp} color="green" />
         <KPICard title="Submitted" value={analyticsSummary.submittedCount} icon={CheckCircle} color="purple" />
@@ -119,13 +141,13 @@ const Dashboard = () => {
       {!loading && analytics?.dailyBreakdown?.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <PerformanceChart
-            title="Daily Reports Submitted"
+            title={user?.role === 'SUPER_ADMIN' ? 'Organisation-Wide Reports' : 'Daily Reports Submitted'}
             data={analytics.dailyBreakdown}
             type="area"
             dataKeys={[{ key: 'count', name: 'Reports', color: '#2563eb' }]}
           />
           <PerformanceChart
-            title="Daily Tasks Completed"
+            title={user?.role === 'SUPER_ADMIN' ? 'Daily Tasks Across Teams' : 'Daily Tasks Completed'}
             data={analytics.dailyBreakdown}
             type="bar"
             dataKeys={[{ key: 'tasks', name: 'Tasks', color: '#16a34a' }]}

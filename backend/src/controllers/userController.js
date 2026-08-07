@@ -9,7 +9,11 @@ const getUsers = async (req, res, next) => {
     const filter = { isActive: isActive === 'true' };
 
     if (role) filter.role = role;
-    if (departmentId) filter.departmentId = departmentId;
+    if (req.user.role === 'HOD' || req.user.role === 'COUNSELLOR') {
+      filter.departmentId = req.user.departmentId;
+    } else if (departmentId) {
+      filter.departmentId = departmentId;
+    }
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -42,6 +46,9 @@ const getUserById = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id).populate('departmentId', 'name');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (req.user.role === 'HOD' && String(user.departmentId?._id) !== String(req.user.departmentId)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
     res.json({ success: true, data: user });
   } catch (error) {
     next(error);

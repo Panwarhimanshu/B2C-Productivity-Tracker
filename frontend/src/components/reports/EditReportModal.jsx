@@ -3,14 +3,17 @@ import { createPortal } from 'react-dom';
 import { X, Save, Printer } from 'lucide-react';
 import { reportsAPI } from '../../api/reports';
 import { targetsAPI } from '../../api/targets';
+import { departmentsAPI } from '../../api/departments';
+import { useAuth } from '../../context/AuthContext';
 import { formatDate, getErrorMessage } from '../../utils/helpers';
-import { normalizeTracker } from '../../constants/tracker';
+import { normalizeTracker, countriesForDepartment, validateCoachingProducts } from '../../constants/tracker';
 import TrackerForm from './TrackerForm';
 import toast from 'react-hot-toast';
 
 const printRoot = typeof document !== 'undefined' ? document.getElementById('print-root') : null;
 
 const EditReportModal = ({ report, onClose, onSaved, readOnly = false }) => {
+  const { user: currentUser } = useAuth();
   const [tracker, setTracker] = useState(normalizeTracker(null));
   const [remarks, setRemarks] = useState('');
   const [saving, setSaving] = useState(false);
@@ -24,18 +27,35 @@ const EditReportModal = ({ report, onClose, onSaved, readOnly = false }) => {
 
     const uid = report.userId?._id || report.userId;
     if (!uid) return;
+    const deptId = report.userId?.departmentId?._id || report.userId?.departmentId
+      || (String(uid) === String(currentUser?._id) ? currentUser?.departmentId : null);
     const d = new Date(report.date);
-    targetsAPI.getForUser(uid, d.getMonth() + 1, d.getFullYear())
-      .then((res) => {
-        const countries = res.data.data?.countries || [];
+
+    Promise.all([
+      departmentsAPI.getAll(),
+      targetsAPI.getForUser(uid, d.getMonth() + 1, d.getFullYear()),
+    ])
+      .then(([deptRes, targetRes]) => {
+        const dept = deptRes.data.data.find((dp) => dp._id === deptId);
+        setTracker(normalizeTracker(report.tasks, countriesForDepartment(dept?.name)));
+
+        const countries = targetRes.data.data?.countries || [];
         setCountryTargets(Object.fromEntries(countries.map((c) => [c.country, c])));
       })
       .catch(() => {});
   }, [report]);
 
   const handleSave = async () => {
-    setSaving(true);
     setError('');
+
+    const check = validateCoachingProducts(tracker);
+    if (!check.valid) {
+      setError(check.message);
+      toast.error(check.message);
+      return;
+    }
+
+    setSaving(true);
     try {
       await reportsAPI.update(report._id, { tasks: tracker, remarks });
       toast.success('Report updated successfully');

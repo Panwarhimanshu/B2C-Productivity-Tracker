@@ -24,23 +24,33 @@ const PROFILE_COLUMNS = [
 const PROFILE_NUMERIC_KEYS = PROFILE_COLUMNS.filter((c) => c.num).map((c) => c.key);
 
 const FOLLOW_UP_TASKS = [
-  'New Applications Follow-up',
-  'Offer Letter Updates',
-  'Payment/Wire-Transfer Follow-up',
-  'Visa Status Follow-up',
-  'Defer & Refund Follow-up',
-  'Commission Drive',
-  'Event Promotion',
-  'Agent Activation Activity',
+  'Email Checking',
+  'Got Visa & Fees Payment update in Agent Sheet',
+  'Got Visa Update in App',
+  'Data Update in K-Apply as per the BRD Sheet',
+  'Calling for Loan data & Maintaining Update in the sheet',
+  'Preparing the Visitor Visa File',
+  'Follow up on the ongoing case',
+  'Refund status checking and follow-up if required',
+  'Fees receipt & PAL follow-up',
 ];
 
 const COMMUNICATION_ITEMS = [
   { key: 'zoomMeetings', label: 'Zoom Meetings' },
   { key: 'callsMade', label: 'Calls Made' },
   { key: 'meetings', label: 'Meetings' },
-  { key: 'kApplyDiscussion', label: 'K Apply Discussion' },
-  { key: 'whatsappQuery', label: 'WhatsApp Query' },
+  { key: 'whatsappMessageSent', label: 'WhatsApp Message Sent' },
+  { key: 'taskModuleFilled', label: 'Task Module Filled', options: ['Yes', 'No', 'Pending'] },
 ];
+
+// Resolve which COUNTRIES a department maps to, by exact (case-insensitive) name match.
+// Falls back to the full COUNTRIES list if the department doesn't correspond to a known
+// country (no department set, or a department not named after a tracked country).
+const countriesForDepartment = (departmentName) => {
+  if (!departmentName) return COUNTRIES;
+  const match = COUNTRIES.find((c) => c.toLowerCase() === departmentName.toLowerCase());
+  return match ? [match] : COUNTRIES;
+};
 
 const num = (v) => {
   const n = parseFloat(v);
@@ -60,23 +70,42 @@ const computeReportTotals = (tasks) => {
     profileTotals[k] = profile.reduce((s, row) => s + num(row?.[k]), 0);
   });
 
-  const followUpCommitted = followUps.reduce((s, r) => s + num(r?.committed), 0);
-  const followUpCompleted = followUps.reduce((s, r) => s + num(r?.completed), 0);
+  const followUpDone = followUps.reduce((s, r) => s + num(r?.done), 0);
 
   const communicationTotals = {};
-  COMMUNICATION_ITEMS.forEach(({ key }) => {
+  COMMUNICATION_ITEMS.forEach(({ key, options }) => {
+    if (options) return; // categorical (e.g. Yes/No/Pending) — not summable
     communicationTotals[key] = num(comm[key]);
   });
 
   return {
     profile: profileTotals,
-    followUp: { committed: followUpCommitted, completed: followUpCompleted },
+    followUp: { done: followUpDone },
     communication: communicationTotals,
     leads: {
       committed: num(extra.leadsCommitted),
       generated: num(extra.leadsGenerated),
     },
   };
+};
+
+// Each Coaching count requires naming the product sold for that unit — e.g. Coaching = 2
+// means two product names must be filled in for that country. Returns { valid, message }.
+const validateCoachingProducts = (tasks) => {
+  const profile = Array.isArray(tasks?.profile) ? tasks.profile : [];
+  for (const row of profile) {
+    const count = Math.round(num(row?.coachingAchieved));
+    if (count <= 0) continue;
+    const products = Array.isArray(row?.coachingProducts) ? row.coachingProducts : [];
+    const filled = products.filter((p) => p && String(p).trim()).length;
+    if (filled < count) {
+      return {
+        valid: false,
+        message: `Enter the product sold for all ${count} Coaching count${count > 1 ? 's' : ''} in ${row.country} (${filled}/${count} filled).`,
+      };
+    }
+  }
+  return { valid: true, message: '' };
 };
 
 module.exports = {
@@ -87,4 +116,6 @@ module.exports = {
   COMMUNICATION_ITEMS,
   num,
   computeReportTotals,
+  validateCoachingProducts,
+  countriesForDepartment,
 };

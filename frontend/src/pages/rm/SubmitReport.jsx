@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Send, AlertCircle, Calendar, User, Hash, Mail } from 'lucide-react';
 import { reportsAPI } from '../../api/reports';
 import { targetsAPI } from '../../api/targets';
+import { departmentsAPI } from '../../api/departments';
 import { useAuth } from '../../context/AuthContext';
-import { emptyTracker } from '../../constants/tracker';
+import { emptyTracker, countriesForDepartment, validateCoachingProducts } from '../../constants/tracker';
 import { getErrorMessage } from '../../utils/helpers';
 import TrackerForm from '../../components/reports/TrackerForm';
 import toast from 'react-hot-toast';
@@ -20,9 +21,15 @@ const SubmitReport = () => {
 
   useEffect(() => {
     const now = new Date();
-    targetsAPI.getMyWithActuals(now.getMonth() + 1, now.getFullYear())
-      .then((res) => {
-        const countries = res.data.data?.countries || [];
+    Promise.all([
+      departmentsAPI.getAll(),
+      targetsAPI.getMyWithActuals(now.getMonth() + 1, now.getFullYear()),
+    ])
+      .then(([deptRes, targetRes]) => {
+        const dept = deptRes.data.data.find((d) => d._id === user.departmentId);
+        setTracker(emptyTracker(countriesForDepartment(dept?.name)));
+
+        const countries = targetRes.data.data?.countries || [];
         setCountryTargets(Object.fromEntries(countries.map((c) => [c.country, c])));
       })
       .catch(() => {});
@@ -31,6 +38,14 @@ const SubmitReport = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    const check = validateCoachingProducts(tracker);
+    if (!check.valid) {
+      setError(check.message);
+      toast.error(check.message);
+      return;
+    }
+
     setSubmitting(true);
     try {
       await reportsAPI.submit({ date, tasks: tracker });

@@ -16,7 +16,25 @@ const TrackerForm = ({ value, onChange, readOnly = false, countryTargets = null 
   const emit = (next) => onChange && onChange(next);
 
   const updateProfile = (idx, key, val) => {
-    const profile = data.profile.map((row, i) => (i === idx ? { ...row, [key]: val } : row));
+    const profile = data.profile.map((row, i) => {
+      if (i !== idx) return row;
+      const next = { ...row, [key]: val };
+      // Keep the per-unit product-name list in sync with the Coaching count.
+      if (key === 'coachingAchieved') {
+        const count = Math.max(0, Math.round(Number(val) || 0));
+        const existing = Array.isArray(row.coachingProducts) ? row.coachingProducts : [];
+        next.coachingProducts = Array.from({ length: count }, (_, i2) => existing[i2] ?? '');
+      }
+      return next;
+    });
+    emit({ ...data, profile });
+  };
+  const updateCoachingProduct = (idx, productIdx, val) => {
+    const profile = data.profile.map((row, i) => {
+      if (i !== idx) return row;
+      const coachingProducts = (row.coachingProducts || []).map((p, j) => (j === productIdx ? val : p));
+      return { ...row, coachingProducts };
+    });
     emit({ ...data, profile });
   };
   const updateFollowUp = (idx, key, val) => {
@@ -96,13 +114,36 @@ const TrackerForm = ({ value, onChange, readOnly = false, countryTargets = null 
                       {row.country}
                     </td>
                     {PROFILE_COLUMNS.map((c) => (
-                      <td key={c.key} className="px-2 py-2 text-center">
+                      <td key={c.key} className="px-2 py-2 text-center align-top">
                         <div className="flex flex-col items-center gap-0.5">
                           {cellInput(row[c.key], (v) => updateProfile(idx, c.key, v), c.type)}
                           {c.targetKey && ct && (
                             <span className="text-[9px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
                               Target {ct[c.targetKey] ?? 0} · MTD {ct[c.key] ?? 0}
                             </span>
+                          )}
+                          {c.key === 'coachingAchieved' && Number(row.coachingAchieved) > 0 && (
+                            <div className="flex flex-col gap-1 mt-1 w-full min-w-[130px]">
+                              <span className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide">Product Sold</span>
+                              {(row.coachingProducts || []).map((prod, pIdx) => (
+                                readOnly ? (
+                                  <span key={pIdx} className="text-[10px] text-gray-600 dark:text-gray-300 text-left px-1.5">
+                                    {pIdx + 1}. {prod || '—'}
+                                  </span>
+                                ) : (
+                                  <input
+                                    key={pIdx}
+                                    type="text"
+                                    placeholder={`Product ${pIdx + 1}`}
+                                    className={`text-[10px] rounded px-1.5 py-1 bg-amber-50/60 dark:bg-amber-900/10 border focus:outline-none focus:ring-1 focus:ring-primary-400 ${
+                                      prod && prod.trim() ? 'border-amber-200 dark:border-amber-800' : 'border-red-300 dark:border-red-700'
+                                    }`}
+                                    value={prod}
+                                    onChange={(e) => updateCoachingProduct(idx, pIdx, e.target.value)}
+                                  />
+                                )
+                              ))}
+                            </div>
                           )}
                         </div>
                       </td>
@@ -137,7 +178,20 @@ const TrackerForm = ({ value, onChange, readOnly = false, countryTargets = null 
           {COMMUNICATION_ITEMS.map((c) => (
             <div key={c.key} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 p-3 flex flex-col gap-2">
               <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide leading-tight">{c.label}</p>
-              {readOnly ? (
+              {c.options ? (
+                readOnly ? (
+                  <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{data.communication?.[c.key] || '—'}</p>
+                ) : (
+                  <select
+                    className="w-full text-sm font-semibold text-gray-800 dark:text-gray-100 bg-transparent border-0 border-b-2 border-gray-200 dark:border-gray-600 focus:border-primary-400 focus:outline-none pb-1 transition-colors"
+                    value={data.communication?.[c.key] ?? ''}
+                    onChange={(e) => updateComm(c.key, e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {c.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                )
+              ) : readOnly ? (
                 <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{data.communication?.[c.key] || '0'}</p>
               ) : (
                 <input
@@ -184,14 +238,13 @@ const TrackerForm = ({ value, onChange, readOnly = false, countryTargets = null 
             <thead>
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 w-1/2">Task</th>
-                <th className="px-4 py-3 text-center font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-b border-gray-200 dark:border-gray-600">Committed</th>
-                <th className="px-4 py-3 text-center font-semibold bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-b border-gray-200 dark:border-gray-600">Completed</th>
+                <th className="px-4 py-3 text-center font-semibold bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-b border-gray-200 dark:border-gray-600">Done</th>
                 <th className="px-4 py-3 text-center font-semibold bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600">Remarks</th>
               </tr>
             </thead>
             <tbody>
               {data.followUpTasks.map((row, idx) => {
-                const done = Number(row.completed) >= Number(row.committed) && Number(row.committed) > 0;
+                const done = Number(row.done) > 0;
                 return (
                   <tr key={row.task} className="group hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors border-b border-gray-100 dark:border-gray-700/60 last:border-0">
                     <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -199,8 +252,7 @@ const TrackerForm = ({ value, onChange, readOnly = false, countryTargets = null 
                       {!done && <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />}
                       {row.task}
                     </td>
-                    <td className="px-4 py-2.5 text-center">{cellInput(row.committed, (v) => updateFollowUp(idx, 'committed', v), 'number')}</td>
-                    <td className="px-4 py-2.5 text-center">{cellInput(row.completed, (v) => updateFollowUp(idx, 'completed', v), 'number')}</td>
+                    <td className="px-4 py-2.5 text-center">{cellInput(row.done, (v) => updateFollowUp(idx, 'done', v), 'number')}</td>
                     <td className="px-4 py-2.5 text-center">{cellInput(row.remarks, (v) => updateFollowUp(idx, 'remarks', v), 'text')}</td>
                   </tr>
                 );
