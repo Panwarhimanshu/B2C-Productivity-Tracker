@@ -9,10 +9,9 @@ import { getErrorMessage } from '../../utils/helpers';
 const TARGET_FIELDS = [
   { key: 'coachingTarget', achievedKey: 'coachingAchieved', label: 'Coaching' },
   { key: 'admissionTarget', achievedKey: 'admissionAchieved', label: 'Admission' },
-  { key: 'revenueTarget', achievedKey: 'revenueAchieved', label: 'Revenue (₹)' },
 ];
 
-const emptyForm = () => ({ coachingTarget: '', admissionTarget: '', revenueTarget: '' });
+const emptyForm = () => ({ coachingTarget: '', admissionTarget: '' });
 
 const now = new Date();
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -46,7 +45,7 @@ const TargetManagement = () => {
   const openEdit = (row) => {
     const t = row.target;
     setForm(t
-      ? { coachingTarget: t.coachingTarget ?? '', admissionTarget: t.admissionTarget ?? '', revenueTarget: t.revenueTarget ?? '' }
+      ? { coachingTarget: t.coachingTarget ?? '', admissionTarget: t.admissionTarget ?? '' }
       : emptyForm());
     setEditingId(row.user._id);
   };
@@ -60,7 +59,6 @@ const TargetManagement = () => {
         userId, country, year, month,
         coachingTarget: Number(form.coachingTarget) || 0,
         admissionTarget: Number(form.admissionTarget) || 0,
-        revenueTarget: Number(form.revenueTarget) || 0,
       });
       toast.success('Target saved');
       setEditingId(null);

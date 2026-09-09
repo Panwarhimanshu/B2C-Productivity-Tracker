@@ -10,7 +10,6 @@ const targetSchema = new mongoose.Schema(
     month: { type: Number, required: true, min: 1, max: 12 },
     coachingTarget: { type: Number, default: 0 },
     admissionTarget: { type: Number, default: 0 },
-    revenueTarget: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

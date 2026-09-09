@@ -11,7 +11,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const USER_IMPORT_HEADERS = ['name', 'email', 'password', 'role', 'designation', 'employeeId', 'department', 'joiningDate'];
-const TARGET_IMPORT_HEADERS = ['email', 'country', 'year', 'month', 'coachingTarget', 'admissionTarget', 'revenueTarget'];
+const TARGET_IMPORT_HEADERS = ['email', 'country', 'year', 'month', 'coachingTarget', 'admissionTarget'];
 
 const ImportResultSummary = ({ result, counts }) => (
   <div className="mt-2 text-xs space-y-1">
@@ -141,7 +141,7 @@ const UserManagement = () => {
   const downloadTargetSample = () => {
     const now = new Date();
     downloadCSV('targets-import-sample.csv', TARGET_IMPORT_HEADERS, [
-      { email: 'anita.verma@company.com', country: COUNTRIES[0], year: now.getFullYear(), month: now.getMonth() + 1, coachingTarget: 40, admissionTarget: 25, revenueTarget: 500000 },
+      { email: 'anita.verma@company.com', country: COUNTRIES[0], year: now.getFullYear(), month: now.getMonth() + 1, coachingTarget: 40, admissionTarget: 25 },
     ]);
   };
 

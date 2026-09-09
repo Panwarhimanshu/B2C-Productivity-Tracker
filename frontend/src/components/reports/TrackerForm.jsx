@@ -7,8 +7,8 @@ import {
 
 // Controlled editor / viewer for a Counsellor Daily Tracker payload.
 // Props: value (tracker object), onChange(next), readOnly,
-// countryTargets ({ [country]: { coachingTarget, admissionTarget, revenueTarget,
-//   coachingAchieved, admissionAchieved, revenueAchieved } } — month-to-date, for reference).
+// countryTargets ({ [country]: { coachingTarget, admissionTarget,
+//   coachingAchieved, admissionAchieved } } — month-to-date, for reference).
 const TrackerForm = ({ value, onChange, readOnly = false, countryTargets = null }) => {
   const data = value;
   const totals = useMemo(() => computeTotals(data), [data]);
@@ -47,7 +47,6 @@ const TrackerForm = ({ value, onChange, readOnly = false, countryTargets = null 
   const COL_GROUP = {
     coachingAchieved: 'blue',
     admissionAchieved: 'green',
-    revenueAchieved: 'violet',
     revenueOthers: 'violet',
     refRevenue: 'violet',
     wireTransferFees: 'amber',

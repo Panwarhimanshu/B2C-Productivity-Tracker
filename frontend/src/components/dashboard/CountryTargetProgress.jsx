@@ -1,7 +1,6 @@
 const FIELDS = [
   { key: 'coaching', targetKey: 'coachingTarget', achievedKey: 'coachingAchieved', label: 'Coaching' },
   { key: 'admission', targetKey: 'admissionTarget', achievedKey: 'admissionAchieved', label: 'Admission' },
-  { key: 'revenue', targetKey: 'revenueTarget', achievedKey: 'revenueAchieved', label: 'Revenue (₹)' },
 ];
 
 const ProgressBar = ({ actual, target }) => {
@@ -23,7 +22,7 @@ const ProgressBar = ({ actual, target }) => {
 // Renders monthly Coaching/Admission/Revenue target vs achieved-to-date, per country.
 // `countries` is the array from targetsAPI.getMyWithActuals()/.getForUser() response.data.data.countries.
 const CountryTargetProgress = ({ countries = [], emptyMessage = 'No targets set for this month yet.' }) => {
-  const withTargets = countries.filter((c) => c.coachingTarget || c.admissionTarget || c.revenueTarget);
+  const withTargets = countries.filter((c) => c.coachingTarget || c.admissionTarget);
 
   if (withTargets.length === 0) {
     return <p className="text-sm text-gray-400 text-center py-4">{emptyMessage}</p>;

@@ -3,14 +3,13 @@
 
 export const COUNTRIES = ['Canada', 'UK', 'USA', 'Germany', 'Dubai', 'Europe'];
 
-// Section 1 – Profile grid columns (per country). coachingAchieved / admissionAchieved /
-// revenueAchieved are entered daily and roll up against that country's monthly Target
-// (set by Super Admin in Target Management) — the target itself isn't stored on the
-// report, it's fetched separately (see countryTargets prop on TrackerForm) for reference.
+// Section 1 – Profile grid columns (per country). coachingAchieved / admissionAchieved
+// are entered daily and roll up against that country's monthly Target (set by Super
+// Admin in Target Management) — the target itself isn't stored on the report, it's
+// fetched separately (see countryTargets prop on TrackerForm) for reference.
 export const PROFILE_COLUMNS = [
   { key: 'coachingAchieved', label: 'Coaching', type: 'number', targetKey: 'coachingTarget' },
   { key: 'admissionAchieved', label: 'Admission', type: 'number', targetKey: 'admissionTarget' },
-  { key: 'revenueAchieved', label: 'Revenue (₹)', type: 'number', targetKey: 'revenueTarget' },
   { key: 'revenueOthers', label: 'Others (₹)', type: 'number' },
   { key: 'refRevenue', label: 'Ref Revenue (₹)', type: 'number' },
   { key: 'wireTransferFees', label: 'Wire Transfer / Fees', type: 'number' },

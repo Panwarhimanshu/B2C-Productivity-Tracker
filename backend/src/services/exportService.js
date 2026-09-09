@@ -22,7 +22,7 @@ const STATUS_FONT = {
 };
 
 // Second worksheet: one row per Counsellor per country with a Target set for the current
-// month, showing Coaching/Admission/Revenue target vs achieved-to-date and a status verdict.
+// month, showing Coaching/Admission target vs achieved-to-date and a status verdict.
 const addTargetAchievementSheet = (workbook, targetRows, targetYear, targetMonth) => {
   const monthLabel = targetYear && targetMonth ? `${MONTH_NAMES[targetMonth - 1]} ${targetYear}` : '';
   const sheet = workbook.addWorksheet('Target Achievement');
@@ -37,9 +37,6 @@ const addTargetAchievementSheet = (workbook, targetRows, targetYear, targetMonth
     { header: 'Admission Target', key: 'admissionTarget', width: 14 },
     { header: 'Admission Achieved', key: 'admissionAchieved', width: 16 },
     { header: 'Admission Status', key: 'admissionStatus', width: 14 },
-    { header: 'Revenue Target (₹)', key: 'revenueTarget', width: 16 },
-    { header: 'Revenue Achieved (₹)', key: 'revenueAchieved', width: 18 },
-    { header: 'Revenue Status', key: 'revenueStatus', width: 14 },
     { header: 'Overall Status', key: 'overallStatus', width: 14 },
   ];
 
@@ -55,8 +52,7 @@ const addTargetAchievementSheet = (workbook, targetRows, targetYear, targetMonth
   targetRows.forEach((t) => {
     const coachingStatus = statusOf(t.coachingAchieved, t.coachingTarget);
     const admissionStatus = statusOf(t.admissionAchieved, t.admissionTarget);
-    const revenueStatus = statusOf(t.revenueAchieved, t.revenueTarget);
-    const statuses = [coachingStatus, admissionStatus, revenueStatus];
+    const statuses = [coachingStatus, admissionStatus];
     const overallStatus = statuses.every((s) => s === 'No Target')
       ? 'No Target'
       : statuses.some((s) => s === 'Not Achieved')
@@ -73,13 +69,10 @@ const addTargetAchievementSheet = (workbook, targetRows, targetYear, targetMonth
       admissionTarget: t.admissionTarget,
       admissionAchieved: t.admissionAchieved,
       admissionStatus,
-      revenueTarget: t.revenueTarget,
-      revenueAchieved: t.revenueAchieved,
-      revenueStatus,
       overallStatus,
     });
 
-    ['coachingStatus', 'admissionStatus', 'revenueStatus', 'overallStatus'].forEach((key) => {
+    ['coachingStatus', 'admissionStatus', 'overallStatus'].forEach((key) => {
       const cell = row.getCell(key);
       const status = cell.value;
       cell.font = { bold: true, color: { argb: STATUS_FONT[status] } };
@@ -118,7 +111,6 @@ const exportToExcel = async (reports, { targetRows = [], targetYear, targetMonth
     { header: 'Country', key: 'country', width: 12 },
     { header: 'Coaching', key: 'coachingAchieved', width: 10 },
     { header: 'Admission', key: 'admissionAchieved', width: 10 },
-    { header: 'Revenue (₹)', key: 'revenueAchieved', width: 12 },
     { header: 'Others (₹)', key: 'revenueOthers', width: 10 },
     { header: 'Ref Revenue (₹)', key: 'refRevenue', width: 12 },
     { header: 'Wire Transfer / Fees', key: 'wireTransferFees', width: 16 },
@@ -151,7 +143,6 @@ const exportToExcel = async (reports, { targetRows = [], targetYear, targetMonth
         country: row.country || '',
         coachingAchieved: row.coachingAchieved || 0,
         admissionAchieved: row.admissionAchieved || 0,
-        revenueAchieved: row.revenueAchieved || 0,
         revenueOthers: row.revenueOthers || 0,
         refRevenue: row.refRevenue || 0,
         wireTransferFees: row.wireTransferFees || 0,

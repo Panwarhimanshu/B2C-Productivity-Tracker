@@ -11,7 +11,7 @@ const monthRange = (year, month) => ({
 // SUPER_ADMIN: create or update one country's monthly target for a user
 const upsertTarget = async (req, res, next) => {
   try {
-    const { userId, country, year, month, coachingTarget, admissionTarget, revenueTarget } = req.body;
+    const { userId, country, year, month, coachingTarget, admissionTarget } = req.body;
     if (!userId || !country || !year || !month) {
       return res.status(400).json({ success: false, message: 'userId, country, year and month are required' });
     }
@@ -24,7 +24,6 @@ const upsertTarget = async (req, res, next) => {
       { $set: {
         coachingTarget: Number(coachingTarget) || 0,
         admissionTarget: Number(admissionTarget) || 0,
-        revenueTarget: Number(revenueTarget) || 0,
       } },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
@@ -61,16 +60,15 @@ const getTargetsTable = async (req, res, next) => {
       const row = profile.find((p) => p.country === country);
       if (!row) return;
       const uid = r.userId.toString();
-      if (!achievedMap[uid]) achievedMap[uid] = { coachingAchieved: 0, admissionAchieved: 0, revenueAchieved: 0 };
+      if (!achievedMap[uid]) achievedMap[uid] = { coachingAchieved: 0, admissionAchieved: 0 };
       achievedMap[uid].coachingAchieved += Number(row.coachingAchieved) || 0;
       achievedMap[uid].admissionAchieved += Number(row.admissionAchieved) || 0;
-      achievedMap[uid].revenueAchieved += Number(row.revenueAchieved) || 0;
     });
 
     const rows = counsellors.map((c) => ({
       user: c,
       target: targetMap[c._id.toString()] || null,
-      achieved: achievedMap[c._id.toString()] || { coachingAchieved: 0, admissionAchieved: 0, revenueAchieved: 0 },
+      achieved: achievedMap[c._id.toString()] || { coachingAchieved: 0, admissionAchieved: 0 },
     }));
 
     res.json({ success: true, data: rows, year, month, country });
@@ -96,14 +94,13 @@ const getTargetWithActuals = async (req, res, next) => {
     targets.forEach((t) => { targetMap[t.country] = t; });
 
     const achievedMap = {};
-    COUNTRIES.forEach((c) => { achievedMap[c] = { coachingAchieved: 0, admissionAchieved: 0, revenueAchieved: 0 }; });
+    COUNTRIES.forEach((c) => { achievedMap[c] = { coachingAchieved: 0, admissionAchieved: 0 }; });
     reports.forEach((r) => {
       const profile = Array.isArray(r.tasks?.profile) ? r.tasks.profile : [];
       profile.forEach((row) => {
         if (!achievedMap[row.country]) return;
         achievedMap[row.country].coachingAchieved += Number(row.coachingAchieved) || 0;
         achievedMap[row.country].admissionAchieved += Number(row.admissionAchieved) || 0;
-        achievedMap[row.country].revenueAchieved += Number(row.revenueAchieved) || 0;
       });
     });
 
@@ -113,7 +110,6 @@ const getTargetWithActuals = async (req, res, next) => {
         country,
         coachingTarget: t?.coachingTarget || 0,
         admissionTarget: t?.admissionTarget || 0,
-        revenueTarget: t?.revenueTarget || 0,
         ...achievedMap[country],
       };
     });
@@ -125,7 +121,7 @@ const getTargetWithActuals = async (req, res, next) => {
 };
 
 // SUPER_ADMIN: bulk upsert monthly per-country targets from parsed CSV rows
-// Each row: { email, country, year, month, coachingTarget, admissionTarget, revenueTarget }
+// Each row: { email, country, year, month, coachingTarget, admissionTarget }
 const importTargets = async (req, res, next) => {
   try {
     const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
@@ -165,7 +161,6 @@ const importTargets = async (req, res, next) => {
           { $set: {
             coachingTarget: Number(row.coachingTarget) || 0,
             admissionTarget: Number(row.admissionTarget) || 0,
-            revenueTarget: Number(row.revenueTarget) || 0,
           } },
           { upsert: true, new: true, setDefaultsOnInsert: true }
         );

@@ -319,12 +319,12 @@ const getTrackerSummary = async (req, res, next) => {
     // Per-country accumulator + flat KPI totals.
     const perCountry = scopeCountries.reduce((acc, c) => {
       acc[c] = PROFILE_NUMERIC_KEYS.reduce((o, k) => ({ ...o, [k]: 0 }), {
-        country: c, coachingTarget: 0, admissionTarget: 0, revenueTarget: 0,
+        country: c, coachingTarget: 0, admissionTarget: 0,
       });
       return acc;
     }, {});
     const kpiTotals = PROFILE_NUMERIC_KEYS.reduce((o, k) => ({ ...o, [k]: 0 }), {});
-    const kpiTargets = { coachingTarget: 0, admissionTarget: 0, revenueTarget: 0 };
+    const kpiTargets = { coachingTarget: 0, admissionTarget: 0 };
     const communication = COMMUNICATION_ITEMS.filter((c) => !c.options).reduce((o, c) => ({ ...o, [c.key]: 0 }), {});
     const followUp = { done: 0 };
     const leads = { committed: 0, generated: 0 };
@@ -360,16 +360,14 @@ const getTrackerSummary = async (req, res, next) => {
       year: targetYear,
       month: targetMonth,
       country: { $in: scopeCountries },
-    }).select('country coachingTarget admissionTarget revenueTarget').lean();
+    }).select('country coachingTarget admissionTarget').lean();
 
     monthTargets.forEach((t) => {
       if (!perCountry[t.country]) return;
       perCountry[t.country].coachingTarget += t.coachingTarget || 0;
       perCountry[t.country].admissionTarget += t.admissionTarget || 0;
-      perCountry[t.country].revenueTarget += t.revenueTarget || 0;
       kpiTargets.coachingTarget += t.coachingTarget || 0;
       kpiTargets.admissionTarget += t.admissionTarget || 0;
-      kpiTargets.revenueTarget += t.revenueTarget || 0;
     });
 
     res.json({
@@ -439,25 +437,24 @@ const exportReports = async (req, res, next) => {
         .select('userId tasks').lean(),
     ]);
 
-    const achievedMap = {}; // userId -> country -> { coachingAchieved, admissionAchieved, revenueAchieved }
+    const achievedMap = {}; // userId -> country -> { coachingAchieved, admissionAchieved }
     monthReports.forEach((r) => {
       const uid = r.userId.toString();
       const profile = Array.isArray(r.tasks?.profile) ? r.tasks.profile : [];
       profile.forEach((row) => {
         if (!achievedMap[uid]) achievedMap[uid] = {};
         if (!achievedMap[uid][row.country]) {
-          achievedMap[uid][row.country] = { coachingAchieved: 0, admissionAchieved: 0, revenueAchieved: 0 };
+          achievedMap[uid][row.country] = { coachingAchieved: 0, admissionAchieved: 0 };
         }
         achievedMap[uid][row.country].coachingAchieved += Number(row.coachingAchieved) || 0;
         achievedMap[uid][row.country].admissionAchieved += Number(row.admissionAchieved) || 0;
-        achievedMap[uid][row.country].revenueAchieved += Number(row.revenueAchieved) || 0;
       });
     });
 
     const targetRows = targets.map((t) => {
       const uid = t.userId.toString();
       const user = scopedCounsellors.find((u) => u._id.toString() === uid);
-      const achieved = achievedMap[uid]?.[t.country] || { coachingAchieved: 0, admissionAchieved: 0, revenueAchieved: 0 };
+      const achieved = achievedMap[uid]?.[t.country] || { coachingAchieved: 0, admissionAchieved: 0 };
       return {
         name: user?.name || 'N/A',
         employeeId: user?.employeeId || 'N/A',
@@ -466,8 +463,6 @@ const exportReports = async (req, res, next) => {
         coachingAchieved: achieved.coachingAchieved,
         admissionTarget: t.admissionTarget || 0,
         admissionAchieved: achieved.admissionAchieved,
-        revenueTarget: t.revenueTarget || 0,
-        revenueAchieved: achieved.revenueAchieved,
       };
     });
 

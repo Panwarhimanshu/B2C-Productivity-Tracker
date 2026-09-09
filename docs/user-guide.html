@@ -1,0 +1,529 @@
+<title>B2C Task Tracker — Role-Based User Guide</title>
+<style>
+  :root{
+    --ink:#161b26; --ink-soft:#4b5468; --ink-faint:#7d84990;
+    --paper:#f3f4f9; --surface:#ffffff; --surface-sunken:#eceef5;
+    --line:#e0e3ec; --line-soft:#eceef4;
+    --accent:#2b4c8c; --accent-ink:#1c3565; --accent-soft:#e8edf8; --accent-soft-line:#cfdaf1;
+    --gold:#9a6b1c; --gold-soft:#f7ecd8;
+    --good:#0f7a4e; --good-soft:#e3f6ec;
+    --bad:#b3311f; --bad-soft:#fbe8e5;
+
+    --role-c:#0f8f5f; --role-c-soft:#e2f6ec; --role-c-line:#bfe8d3;
+    --role-h:#2b62c9; --role-h-soft:#e8f0fd; --role-h-line:#c5d9f8;
+    --role-a:#7c3aed; --role-a-soft:#f1eafd; --role-a-line:#dccbfa;
+
+    --font-head: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', 'Noto Serif', serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Liberation Mono', monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e8e9f2; --ink-soft:#a3aac0; --ink-faint:#767d92;
+      --paper:#11131b; --surface:#181b26; --surface-sunken:#1f2330;
+      --line:#2b2f3f; --line-soft:#242836;
+      --accent:#7f9fdc; --accent-ink:#cddaf3; --accent-soft:#1f2c47; --accent-soft-line:#33456e;
+      --gold:#d8ab5c; --gold-soft:#372a14;
+      --good:#4cc98b; --good-soft:#123626;
+      --bad:#e88376; --bad-soft:#3a1a16;
+      --role-c:#4cd699; --role-c-soft:#0f2e21; --role-c-line:#1e5a3f;
+      --role-h:#8fb3f5; --role-h-soft:#182742; --role-h-line:#2c4a80;
+      --role-a:#bb9af7; --role-a-soft:#241a3c; --role-a-line:#432d70;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#e8e9f2; --ink-soft:#a3aac0; --ink-faint:#767d92;
+    --paper:#11131b; --surface:#181b26; --surface-sunken:#1f2330;
+    --line:#2b2f3f; --line-soft:#242836;
+    --accent:#7f9fdc; --accent-ink:#cddaf3; --accent-soft:#1f2c47; --accent-soft-line:#33456e;
+    --gold:#d8ab5c; --gold-soft:#372a14;
+    --good:#4cc98b; --good-soft:#123626;
+    --bad:#e88376; --bad-soft:#3a1a16;
+    --role-c:#4cd699; --role-c-soft:#0f2e21; --role-c-line:#1e5a3f;
+    --role-h:#8fb3f5; --role-h-soft:#182742; --role-h-line:#2c4a80;
+    --role-a:#bb9af7; --role-a-soft:#241a3c; --role-a-line:#432d70;
+  }
+
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } *{ transition:none !important; animation:none !important; } }
+
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--font-body); font-size:15px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{ color:var(--accent); }
+  ::selection{ background:var(--accent-soft); }
+
+  h1,h2,h3,h4{ font-family:var(--font-head); font-weight:700; color:var(--ink); text-wrap:balance; line-height:1.2; }
+  code, .mono{ font-family:var(--font-mono); }
+
+  /* ── Shell layout ───────────────────────────────────────── */
+  .shell{ display:grid; grid-template-columns:250px minmax(0,1fr); min-height:100vh; }
+  @media (max-width:900px){ .shell{ grid-template-columns:1fr; } }
+
+  .toc{
+    position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+    border-right:1px solid var(--line); background:var(--surface);
+    padding:28px 20px 40px;
+  }
+  @media (max-width:900px){
+    .toc{ position:static; height:auto; border-right:none; border-bottom:1px solid var(--line); padding:16px 20px; }
+    .toc-groups{ display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; }
+    .toc-group-title{ display:none; }
+    .toc a{ white-space:nowrap; }
+  }
+
+  .toc-brand{ margin-bottom:22px; }
+  .toc-brand .eyebrow{ display:block; }
+  .toc-brand h1{ font-size:17px; margin:4px 0 0; }
+  @media (max-width:900px){ .toc-brand{ margin-bottom:12px; } }
+
+  .toc-groups{ display:flex; flex-direction:column; gap:18px; }
+  .toc-group-title{
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--ink-faint); margin:0 0 6px 10px;
+  }
+  .toc a{
+    display:block; padding:6px 10px; border-radius:7px; font-size:13.5px;
+    color:var(--ink-soft); text-decoration:none; border-left:2px solid transparent;
+  }
+  .toc a:hover{ background:var(--surface-sunken); color:var(--ink); }
+  .toc a.role-c{ border-left-color:var(--role-c); }
+  .toc a.role-h{ border-left-color:var(--role-h); }
+  .toc a.role-a{ border-left-color:var(--role-a); }
+
+  main{ padding:52px clamp(20px,4vw,64px) 100px; max-width:900px; }
+
+  .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--accent); font-weight:600;
+  }
+
+  /* ── Cover ──────────────────────────────────────────────── */
+  .cover{ margin-bottom:56px; padding-bottom:36px; border-bottom:1px solid var(--line); }
+  .cover h1{ font-size:clamp(28px,4vw,38px); margin:10px 0 12px; }
+  .cover .lede{ font-size:16.5px; color:var(--ink-soft); max-width:62ch; margin:0 0 20px; }
+  .cover .meta{ display:flex; gap:18px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px; color:var(--ink-faint); }
+  .cover .meta b{ color:var(--ink-soft); font-weight:600; }
+
+  /* ── Sections ───────────────────────────────────────────── */
+  section{ margin-bottom:64px; scroll-margin-top:24px; }
+  section > h2{ font-size:26px; margin:0 0 6px; }
+  section > .section-sub{ color:var(--ink-soft); margin:0 0 28px; max-width:66ch; }
+
+  .role-section{
+    border-left:3px solid var(--line); padding-left:24px;
+  }
+  .role-section.c{ border-left-color:var(--role-c); }
+  .role-section.h{ border-left-color:var(--role-h); }
+  .role-section.a{ border-left-color:var(--role-a); }
+
+  .role-pill{
+    display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono);
+    font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:600;
+    padding:4px 10px; border-radius:999px; border:1px solid transparent;
+  }
+  .role-pill.c{ background:var(--role-c-soft); color:var(--role-c); border-color:var(--role-c-line); }
+  .role-pill.h{ background:var(--role-h-soft); color:var(--role-h); border-color:var(--role-h-line); }
+  .role-pill.a{ background:var(--role-a-soft); color:var(--role-a); border-color:var(--role-a-line); }
+
+  h3{ font-size:19px; margin:36px 0 4px; }
+  h3 .nav-label{
+    font-family:var(--font-mono); font-size:12px; font-weight:500; color:var(--ink-faint);
+    margin-left:8px;
+  }
+  h3 + .section-sub{ margin:0 0 16px; color:var(--ink-soft); max-width:64ch; }
+  p{ max-width:68ch; }
+  p.tight{ margin:8px 0; }
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:20px 22px; margin:16px 0;
+  }
+  .callout{
+    border:1px solid var(--accent-soft-line); background:var(--accent-soft); border-radius:10px;
+    padding:14px 18px; margin:18px 0; max-width:66ch;
+  }
+  .callout p{ margin:0; }
+  .callout .eyebrow{ display:block; margin-bottom:6px; }
+  .callout.gold{ border-color:var(--gold-soft); background:var(--gold-soft); }
+  .callout.gold .eyebrow{ color:var(--gold); }
+
+  ol.steps{ padding-left:0; list-style:none; counter-reset:step; max-width:66ch; }
+  ol.steps > li{
+    counter-increment:step; position:relative; padding:2px 0 16px 38px; margin:0;
+  }
+  ol.steps > li::before{
+    content:counter(step); position:absolute; left:0; top:1px;
+    width:24px; height:24px; border-radius:50%; background:var(--accent-soft); color:var(--accent-ink);
+    font-family:var(--font-mono); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  }
+  ol.steps > li b{ color:var(--ink); }
+
+  ul.plain{ padding-left:20px; max-width:64ch; }
+  ul.plain li{ margin:5px 0; }
+  ul.check{ list-style:none; padding-left:0; max-width:64ch; }
+  ul.check li{ position:relative; padding-left:24px; margin:6px 0; }
+  ul.check li::before{ content:"✓"; position:absolute; left:0; color:var(--good); font-weight:700; }
+  ul.cross{ list-style:none; padding-left:0; max-width:64ch; }
+  ul.cross li{ position:relative; padding-left:24px; margin:6px 0; color:var(--ink-soft); }
+  ul.cross li::before{ content:"–"; position:absolute; left:2px; color:var(--bad); font-weight:700; }
+
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  .table-wrap{ overflow-x:auto; margin:16px 0; border:1px solid var(--line); border-radius:10px; }
+  .table-wrap table{ margin:0; }
+  th,td{ text-align:left; padding:9px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+  thead th{
+    background:var(--surface-sunken); font-family:var(--font-mono); font-size:11px; letter-spacing:.04em;
+    text-transform:uppercase; color:var(--ink-faint); font-weight:600; border-bottom:1px solid var(--line);
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  td code{ font-size:12.5px; background:var(--surface-sunken); padding:1px 6px; border-radius:5px; }
+  .num{ font-variant-numeric:tabular-nums; }
+
+  .matrix td, .matrix th{ text-align:center; }
+  .matrix td:first-child, .matrix th:first-child{ text-align:left; }
+  .yes{ color:var(--good); font-weight:700; }
+  .no{ color:var(--ink-faint); }
+
+  .badge-demo{
+    display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700;
+    padding:3px 9px; border-radius:999px;
+  }
+  .badge-demo.good{ background:var(--good-soft); color:var(--good); }
+  .badge-demo.bad{ background:var(--bad-soft); color:var(--bad); }
+
+  .status-badge{ display:inline-flex; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:600; }
+  .status-badge.submitted{ background:var(--good-soft); color:var(--good); }
+  .status-badge.modified{ background:var(--gold-soft); color:var(--gold); }
+
+  .kbd{
+    font-family:var(--font-mono); font-size:12px; background:var(--surface-sunken);
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:1px 6px;
+  }
+
+  hr.div{ border:none; border-top:1px solid var(--line); margin:56px 0; }
+
+  footer{
+    max-width:900px; margin:0 auto; padding:0 clamp(20px,4vw,64px) 60px; color:var(--ink-faint); font-size:12.5px;
+  }
+
+  a:focus-visible, button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  @media print{
+    .toc{ display:none; }
+    .shell{ display:block; }
+    main{ max-width:none; padding:0; }
+  }
+</style>
+
+<div class="shell">
+  <nav class="toc" aria-label="Table of contents">
+    <div class="toc-brand">
+      <span class="eyebrow">Kanan International</span>
+      <h1>B2C Task Tracker — Guide</h1>
+    </div>
+    <div class="toc-groups">
+      <div>
+        <p class="toc-group-title">Start here</p>
+        <a href="#overview">Overview</a>
+        <a href="#getting-started">Getting started</a>
+      </div>
+      <div>
+        <p class="toc-group-title">Counsellor</p>
+        <a class="role-c" href="#counsellor">Counsellor guide</a>
+      </div>
+      <div>
+        <p class="toc-group-title">Head of Department</p>
+        <a class="role-h" href="#hod">HOD guide</a>
+      </div>
+      <div>
+        <p class="toc-group-title">Super Admin</p>
+        <a class="role-a" href="#admin">Super Admin guide</a>
+      </div>
+      <div>
+        <p class="toc-group-title">Look up</p>
+        <a href="#reference">Field &amp; rules reference</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="cover">
+      <span class="eyebrow">Internal handbook</span>
+      <h1>Who can do what, and how to do it</h1>
+      <p class="lede">
+        The B2C Task Tracker runs on three roles — Counsellor, Head of Department, and Super Admin —
+        each scoped to see and edit a different slice of the organisation. This guide walks through
+        every screen a role has access to, in the order you'd actually use them.
+      </p>
+      <div class="meta">
+        <span><b>App</b> · B2C Daily Task Tracker</span>
+        <span><b>Roles covered</b> · 3</span>
+        <span><b>Last updated</b> · August 2026</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ OVERVIEW ══════════════════════ -->
+    <section id="overview">
+      <h2>Overview</h2>
+      <p class="section-sub">Every account belongs to exactly one department, and a department is named after the country it works — Canada, UK, USA, Germany, Dubai, or Europe. That mapping is what quietly scopes almost everything below.</p>
+
+      <div class="table-wrap">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>Can they…</th>
+              <th class="role-pill c" style="border-radius:0;background:none;border:none;color:var(--role-c)">Counsellor</th>
+              <th class="role-pill h" style="border-radius:0;background:none;border:none;color:var(--role-h)">HOD</th>
+              <th class="role-pill a" style="border-radius:0;background:none;border:none;color:var(--role-a)">Super Admin</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Submit a daily report</td><td class="yes">Own only</td><td class="no">—</td><td class="no">—</td></tr>
+            <tr><td>View reports</td><td class="yes">Own only</td><td class="yes">Own department</td><td class="yes">Everyone</td></tr>
+            <tr><td>Edit a report</td><td class="yes">Own, today only</td><td class="yes">Own dept., any date</td><td class="yes">Anyone, any date</td></tr>
+            <tr><td>Export reports to Excel</td><td class="no">—</td><td class="yes">Own department</td><td class="yes">Everyone</td></tr>
+            <tr><td>View report audit logs</td><td class="no">—</td><td class="yes">Own department</td><td class="yes">Everyone</td></tr>
+            <tr><td>View department org chart</td><td class="yes">Own, read-only</td><td class="yes">Own, editable</td><td class="yes">Everyone, editable</td></tr>
+            <tr><td>Create / rename departments</td><td class="no">—</td><td class="no">—</td><td class="yes">Yes</td></tr>
+            <tr><td>Map HODs &amp; Counsellors to a department</td><td class="no">—</td><td class="no">—</td><td class="yes">Yes</td></tr>
+            <tr><td>Create or deactivate login users</td><td class="no">—</td><td class="no">—</td><td class="yes">Yes</td></tr>
+            <tr><td>Set monthly targets</td><td class="no">View only</td><td class="no">View only</td><td class="yes">Yes</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <span class="eyebrow">Why this matters</span>
+        <p>A Head of Department only ever sees their own department's numbers — dashboard, reports, logs, org chart, all of it. If Anil is HOD of Canada, UK's figures simply don't appear anywhere in his account. Super Admin is the only role with an org-wide view.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════ GETTING STARTED ══════════════════════ -->
+    <section id="getting-started">
+      <h2>Getting started</h2>
+      <p class="section-sub">The same for every role — the top bar and the dashboard shell.</p>
+
+      <h3>Signing in</h3>
+      <p>Use the email and password your Super Admin set up for you at <span class="mono">/login</span>. There's no self-service signup — every account is created by a Super Admin (see <a href="#admin-users">User Management</a>).</p>
+
+      <h3>The top bar</h3>
+      <ul class="plain">
+        <li><b>Theme toggle</b> (sun/moon icon) — switches the whole app between light and dark.</li>
+        <li><b>Notification bell</b> — shows a red count of unread alerts. Every counsellor's report submission notifies their department's HOD and all Super Admins. Click a notification to mark it read, or <span class="kbd">Mark all read</span>.</li>
+        <li><b>Your name, top-right</b> — opens <b>My Profile</b> and <b>Logout</b>.</li>
+      </ul>
+
+      <h3>Reading the dashboard</h3>
+      <p>Every role lands on <b>Dashboard</b> after login (Super Admin sees it labelled <b>Organisation Dashboard</b>). It has four parts, stacked top to bottom:</p>
+      <ol class="steps">
+        <li><b>Period selector</b> — Today, Last 7 Days, Last 15 Days, or Last 30 Days. Changes the KPI cards and charts below it; it does <i>not</i> change target figures, which are always this calendar month.</li>
+        <li><b>KPI cards</b> — Total Reports, Admissions, Submitted, Modified (plus Total Users and Active Departments for Super Admin).</li>
+        <li><b>Profile by Country</b> — Coaching / Admission per country, each with a small badge: <span class="badge-demo good">✓ Target 5</span> means this month's target is met, <span class="badge-demo bad">✗ 3 short of 5</span> means it isn't yet. No badge at all means no target has been set for that country this month.</li>
+        <li><b>Communication &amp; Follow-up</b> — totals rolled up from every report in scope for the selected period.</li>
+      </ol>
+    </section>
+
+    <hr class="div" />
+
+    <!-- ══════════════════════ COUNSELLOR ══════════════════════ -->
+    <section id="counsellor" class="role-section c">
+      <span class="role-pill c">Counsellor</span>
+      <h2 style="margin-top:10px;">Counsellor guide</h2>
+      <p class="section-sub">Your world is your own reports, your own performance, and your own department's org chart. You can't see or touch anyone else's data.</p>
+
+      <h3 id="counsellor-submit">Submitting your daily report <span class="nav-label">Submit Report</span></h3>
+      <p class="section-sub">One report per calendar day. The date picker only allows today — you can't back-fill a missed day or submit ahead of time.</p>
+      <ol class="steps">
+        <li>Open <b>Submit Report</b>. Your name, employee ID and email are filled in automatically; today's date is pre-selected.</li>
+        <li><b>Section 1 · Profile</b> shows one row per country your department covers (almost always just one). Fill in Coaching, Admission, Revenue and the rest of the day's figures for that country.</li>
+        <li>
+          <b>If you enter a Coaching count of 1 or more</b>, a small amber-bordered field appears under it for every unit — <span class="mono">Product 1</span>, <span class="mono">Product 2</span>, and so on. Each one needs the name of the product sold before you can submit. Coaching = 2 means two product names, no exceptions.
+        </li>
+        <li><b>Communication</b> — log Zoom Meetings, Calls Made and Meetings as counts, paste their recording/sheet/MOM links if you have them, log WhatsApp Message Sent as a count, and set Task Module Filled to Yes, No or Pending.</li>
+        <li><b>Section 2 · Follow-up Tasks</b> — for each of the 9 standard tasks (see <a href="#ref-followup">full list</a>), enter how many you completed today and an optional remark.</li>
+        <li><b>Section 3 · Extra Initiatives</b> — Leads Committed and Leads Generated.</li>
+        <li>Write a one-line <b>Summary</b> of your day, then <b>Submit Report</b>.</li>
+      </ol>
+      <div class="callout gold">
+        <span class="eyebrow">The one rule that trips people up</span>
+        <p>Coaching count and product names must match exactly, or the form — and the server — will reject the submission with a message telling you how many are still missing.</p>
+      </div>
+
+      <h3 id="counsellor-my-reports">Viewing and fixing past reports <span class="nav-label">My Reports</span></h3>
+      <p>Filter by period, then <b>View</b> any report to see it read-only. The <b>Edit</b> pencil only appears on <b>today's</b> report — once midnight passes, that day's report is locked even to you; ask your HOD if it needs a correction.</p>
+      <p class="tight">Every edit changes the status badge from <span class="status-badge submitted">Submitted</span> to <span class="status-badge modified">Modified</span> and records who changed it and when — visible to your HOD in Report Logs.</p>
+
+      <h3 id="counsellor-performance">Tracking your target <span class="nav-label">Performance</span></h3>
+      <p>The Targets card shows Coaching / Admission as a progress bar per country: <span style="color:var(--good);font-weight:600">green</span> at 100%+, <span style="color:var(--gold);font-weight:600">amber</span> from 60–99%, <span style="color:var(--bad);font-weight:600">red</span> below 60%. Below that, standard KPI cards and charts for the selected period.</p>
+
+      <h3 id="counsellor-department">Your department's org chart <span class="nav-label">My Department</span></h3>
+      <p>Read-only. Shows your HOD, every Counsellor in the department, and any sub-teams (e.g. Onshore, Visa Team) your HOD or Super Admin has set up, each as a card with photo, designation, phone/email, and what to contact them for.</p>
+
+      <h3 id="counsellor-profile">Your profile <span class="nav-label">Profile</span></h3>
+      <p>Upload or remove your profile photo (auto-cropped square, under 5MB). Name, email, employee ID, role, department and joining date are shown for reference — editing those is a Super Admin action, done through User Management.</p>
+    </section>
+
+    <hr class="div" />
+
+    <!-- ══════════════════════ HOD ══════════════════════ -->
+    <section id="hod" class="role-section h">
+      <span class="role-pill h">Head of Department</span>
+      <h2 style="margin-top:10px;">HOD guide</h2>
+      <p class="section-sub">Everything below is scoped to your own department. You see every Counsellor under you, but nothing from any other department.</p>
+
+      <h3 id="hod-all-reports">Reviewing every report in your department <span class="nav-label">All Reports</span></h3>
+      <ol class="steps">
+        <li>Filter by period and, optionally, by a specific Counsellor.</li>
+        <li><b>View</b> any report read-only, or <b>Edit</b> to correct it — unlike a Counsellor, you're not limited to today's date.</li>
+        <li>Click <b>Export</b> to download an Excel workbook for the current filter: one sheet with a row per report per country, plus a second <b>Target Achievement</b> sheet — one row per Counsellor per country with a target set this month, showing target vs. achieved and an Achieved / Not Achieved status for Coaching, Admission and Revenue.</li>
+      </ol>
+
+      <h3 id="hod-logs">Auditing changes <span class="nav-label">Report Logs</span></h3>
+      <p>Every submission and every edit is logged with a timestamp, who did it, what changed, and their IP address — filterable by period and role. Only entries for your own department's Counsellors appear.</p>
+
+      <h3 id="hod-department">Maintaining your org chart <span class="nav-label">My Department</span></h3>
+      <p>Same tree view Counsellors see, but you can add, edit or remove people in it — including yourself's listing, other Counsellors' contact cards, and any sub-team you want to introduce (type a new team name, or pick an existing one from the suggestions).</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Photo</td><td>Optional, auto-cropped square</td></tr>
+            <tr><td>Full Name, Designation</td><td>Required</td></tr>
+            <tr><td>Sub-team</td><td>Free text — leave blank for "General", or group people under e.g. <code>Onshore</code>, <code>Visa Team</code></td></tr>
+            <tr><td>Phone, Email</td><td>Optional — shown as tap-to-call / tap-to-email links</td></tr>
+            <tr><td>What to contact for</td><td>Short note shown on their card</td></tr>
+            <tr><td>Visible in directory</td><td>Untick to hide someone without deleting them</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="section-sub" style="margin-top:16px">What you <i>can't</i> do here: create a new department, rename or delete your department, or change which Counsellors/HODs are mapped into it — all three are Super Admin actions.</p>
+
+      <h3 id="hod-cannot">What's off-limits to HOD</h3>
+      <ul class="cross">
+        <li>Creating login accounts (only Super Admin adds users)</li>
+        <li>Setting monthly targets — you can see the target figures on every report and dashboard, but only Super Admin edits them</li>
+        <li>Seeing any department other than your own, anywhere in the app</li>
+      </ul>
+    </section>
+
+    <hr class="div" />
+
+    <!-- ══════════════════════ SUPER ADMIN ══════════════════════ -->
+    <section id="admin" class="role-section a">
+      <span class="role-pill a">Super Admin</span>
+      <h2 style="margin-top:10px;">Super Admin guide</h2>
+      <p class="section-sub">Full, org-wide access — every department's reports, users, targets and org chart. All-Reports, Report Logs and the Dashboard work exactly as they do for HOD, just without the department boundary (and with an optional department filter where useful). Below are the three screens unique to this role.</p>
+
+      <h3 id="admin-users">Managing accounts <span class="nav-label">User Management</span></h3>
+      <ol class="steps">
+        <li>Click <b>Add User</b> and fill in Full Name, Email, Password, Employee ID, Joining Date, Role and Department. Editing an existing user works the same way — leave the password field blank to keep their current one.</li>
+        <li>Toggle <b>Inactive</b> to view deactivated accounts. Deactivating a user (the person-with-a-slash icon) is a soft removal — it blocks their login without deleting their history; <b>Reactivate</b> reverses it.</li>
+        <li>Search by name or email with the search box, top right.</li>
+      </ol>
+      <p><b>Bulk import</b> via the <span class="kbd">Import</span> button accepts two kinds of CSV — download the sample file from the modal to get the exact column order.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Import</th><th>Columns</th><th>Behaviour</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Users</td>
+              <td><code>name, email, password, role, designation, employeeId, department, joiningDate</code></td>
+              <td>Existing emails are updated (password kept unless a new one is given); new emails are created (password required, 6+ characters). <code>department</code> must match an existing department name exactly.</td>
+            </tr>
+            <tr>
+              <td>Targets</td>
+              <td><code>email, country, year, month, coachingTarget, admissionTarget</code></td>
+              <td>Matched to an existing user by email — the user must already exist.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="admin-departments">Structuring departments <span class="nav-label">Department Management</span></h3>
+      <ol class="steps">
+        <li>Click <b>Add Department</b> — name it after the country it represents (e.g. <span class="mono">Canada</span>) so daily reports automatically scope to the right country row, give it a short description, then tick which HODs and Counsellors belong in it. Moving someone here reassigns them away from wherever they were before — the form shows "currently: X" as a warning.</li>
+        <li>Click any department card to expand its full org chart — HOD, Counsellors, and every sub-team — and edit it the same way an HOD edits their own (see <a href="#hod-department">My Department</a> above), for <i>any</i> department.</li>
+        <li><b>Delete</b> a department to remove it — anyone mapped to it becomes unassigned, they are not deleted as users.</li>
+      </ol>
+
+      <h3 id="admin-targets">Setting monthly targets <span class="nav-label">Monthly Targets</span></h3>
+      <p>Pick a Country, Month and Year, and you'll get every Counsellor in that country's department in a table. Click the pencil on a row to set Coaching, Admission and Revenue targets for that Counsellor, that country, that month — "achieved" underneath each field updates live from their daily reports as the month goes on.</p>
+      <p class="section-sub">Targets are per Counsellor, per country, per calendar month — there's no yearly or department-wide target, by design, so each person's number reflects only their own mapped country.</p>
+    </section>
+
+    <hr class="div" />
+
+    <!-- ══════════════════════ REFERENCE ══════════════════════ -->
+    <section id="reference">
+      <h2>Field &amp; rules reference</h2>
+      <p class="section-sub">Look-up tables for anything you need to double-check, regardless of role.</p>
+
+      <h3>Section 1 · Profile columns</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>Coaching</td><td>Coaching sessions closed today. Each unit needs a product-sold name (see below).</td></tr>
+            <tr><td>Admission</td><td>Admissions confirmed today. Counts toward the "Admissions" KPI app-wide.</td></tr>
+            <tr><td>Others (₹)</td><td>Other revenue not covered by the categories above.</td></tr>
+            <tr><td>Ref Revenue (₹)</td><td>Revenue from referrals.</td></tr>
+            <tr><td>Wire Transfer / Fees</td><td>Wire transfers or fee payments processed today.</td></tr>
+            <tr><td>Got Visa</td><td>Visas granted today.</td></tr>
+            <tr><td>App. File (Upcoming Intake)</td><td>Application files started for the upcoming intake.</td></tr>
+            <tr><td>App. File (Next Intake)</td><td>Application files started for the intake after that.</td></tr>
+            <tr><td>Remarks</td><td>Free text, specific to that country's row.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="ref-followup">Section 2 · The 9 Follow-up Tasks</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Task</th></tr></thead>
+          <tbody>
+            <tr><td class="num">1</td><td>Email Checking</td></tr>
+            <tr><td class="num">2</td><td>Got Visa &amp; Fees Payment update in Agent Sheet</td></tr>
+            <tr><td class="num">3</td><td>Got Visa Update in App</td></tr>
+            <tr><td class="num">4</td><td>Data Update in K-Apply as per the BRD Sheet</td></tr>
+            <tr><td class="num">5</td><td>Calling for Loan data &amp; Maintaining Update in the sheet</td></tr>
+            <tr><td class="num">6</td><td>Preparing the Visitor Visa File</td></tr>
+            <tr><td class="num">7</td><td>Follow up on the ongoing case</td></tr>
+            <tr><td class="num">8</td><td>Refund status checking and follow-up if required</td></tr>
+            <tr><td class="num">9</td><td>Fees receipt &amp; PAL follow-up</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Communication fields</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Zoom Meetings</td><td class="num">Count</td><td>Optional recording/meeting link field alongside it</td></tr>
+            <tr><td>Calls Made</td><td class="num">Count</td><td>Optional Google Sheet link alongside it</td></tr>
+            <tr><td>Meetings</td><td class="num">Count</td><td>Optional MOM (minutes of meeting) link alongside it</td></tr>
+            <tr><td>WhatsApp Message Sent</td><td class="num">Count</td><td>—</td></tr>
+            <tr><td>Task Module Filled</td><td>Yes / No / Pending</td><td>Not a count — excluded from communication totals</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Target achievement badges</h3>
+      <p class="tight"><span class="badge-demo good">✓ Target 5</span> — this month's Coaching or Admission target has been met or exceeded.</p>
+      <p class="tight"><span class="badge-demo bad">✗ 3 short of 5</span> — still below target, with the exact gap shown.</p>
+      <p class="tight">No badge — no target has been set for that country this month; there's nothing to compare against yet.</p>
+      <p class="section-sub">These always reflect the current calendar month, no matter which period (Today / 7 / 15 / 30 days) is selected on the dashboard — targets are inherently monthly.</p>
+
+      <h3>Report status</h3>
+      <p class="tight"><span class="status-badge submitted">Submitted</span> — as originally filed, untouched since.</p>
+      <p class="tight"><span class="status-badge modified">Modified</span> — edited at least once, by the Counsellor (same day only) or by an HOD/Super Admin (any time). Report Logs shows exactly who and when.</p>
+
+      <h3>Printing a report</h3>
+      <p>Open any report and click <b>Print</b> — output is formatted to a single A4 portrait page regardless of how much data it holds.</p>
+    </section>
+  </main>
+</div>
