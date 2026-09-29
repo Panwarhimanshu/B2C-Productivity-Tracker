@@ -1,4 +1,4 @@
-import { PROFILE_COLUMNS, COMMUNICATION_ITEMS } from '../../constants/tracker';
+import { PROFILE_COLUMNS } from '../../constants/tracker';
 
 // Renders the aggregated KPI rollup from GET /reports/summary (mirrors the org-wide dashboard tab).
 const KPI_KEYS = PROFILE_COLUMNS.filter((c) => c.type === 'number').map((c) => c.key);
@@ -24,7 +24,7 @@ const TargetBadge = ({ achieved, target }) => {
 
 const TrackerSummary = ({ summary, departments = [] }) => {
   if (!summary) return null;
-  const { kpiTotals = {}, kpiTargets = {}, perCountry = [], communication = {}, followUp = {}, leads = {}, targetMonth, targetYear } = summary;
+  const { kpiTotals = {}, kpiTargets = {}, perCountry = [], followUp = {}, leads = {}, targetMonth, targetYear } = summary;
   const monthLabel = targetMonth && targetYear
     ? new Date(targetYear, targetMonth - 1).toLocaleString('default', { month: 'long', year: 'numeric' })
     : null;
@@ -110,33 +110,20 @@ const TrackerSummary = ({ summary, departments = [] }) => {
         </div>
       </div>
 
-      {/* Communication + follow-up + leads */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card p-4">
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Communication</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {COMMUNICATION_ITEMS.filter((c) => !c.options).map((c) => (
-              <div key={c.key} className="rounded-lg bg-gray-50 dark:bg-gray-700/40 p-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400">{c.label}</p>
-                <p className="text-base font-semibold text-gray-900 dark:text-white">{communication[c.key] ?? 0}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="card p-4">
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Follow-up &amp; Initiatives</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              ['Tasks Done', followUp.done],
-              ['Leads Committed', leads.committed],
-              ['Leads Generated', leads.generated],
-            ].map(([label, val]) => (
-              <div key={label} className="rounded-lg bg-gray-50 dark:bg-gray-700/40 p-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-                <p className="text-base font-semibold text-gray-900 dark:text-white">{val ?? 0}</p>
-              </div>
-            ))}
-          </div>
+      {/* Follow-up & leads */}
+      <div className="card p-4">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Follow-up &amp; Initiatives</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-lg">
+          {[
+            ['Tasks Done', followUp.done],
+            ['Leads Committed', leads.committed],
+            ['Leads Generated', leads.generated],
+          ].map(([label, val]) => (
+            <div key={label} className="rounded-lg bg-gray-50 dark:bg-gray-700/40 p-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+              <p className="text-base font-semibold text-gray-900 dark:text-white">{val ?? 0}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

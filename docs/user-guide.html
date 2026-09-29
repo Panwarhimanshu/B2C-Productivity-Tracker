@@ -323,7 +323,7 @@
         <li><b>Period selector</b> — Today, Last 7 Days, Last 15 Days, or Last 30 Days. Changes the KPI cards and charts below it; it does <i>not</i> change target figures, which are always this calendar month.</li>
         <li><b>KPI cards</b> — Total Reports, Admissions, Submitted, Modified (plus Total Users and Active Departments for Super Admin).</li>
         <li><b>Profile by Country</b> — Coaching / Admission per country, each with a small badge: <span class="badge-demo good">✓ Target 5</span> means this month's target is met, <span class="badge-demo bad">✗ 3 short of 5</span> means it isn't yet. No badge at all means no target has been set for that country this month.</li>
-        <li><b>Communication &amp; Follow-up</b> — totals rolled up from every report in scope for the selected period.</li>
+        <li><b>Follow-up</b> — totals rolled up from every report in scope for the selected period.</li>
       </ol>
     </section>
 
@@ -339,12 +339,11 @@
       <p class="section-sub">One report per calendar day. The date picker only allows today — you can't back-fill a missed day or submit ahead of time.</p>
       <ol class="steps">
         <li>Open <b>Submit Report</b>. Your name, employee ID and email are filled in automatically; today's date is pre-selected.</li>
-        <li><b>Section 1 · Profile</b> shows one row per country your department covers (almost always just one). Fill in Coaching, Admission, Revenue and the rest of the day's figures for that country.</li>
+        <li><b>Section 1 · Profile</b> shows one row per country your department covers (almost always just one). Fill in Coaching, Admission, Calls Made, Offline Meeting, Online Meeting, WhatsApp Message Sent, Task Module Filled (Yes/No/Pending) and Remarks for that country.</li>
         <li>
           <b>If you enter a Coaching count of 1 or more</b>, a small amber-bordered field appears under it for every unit — <span class="mono">Product 1</span>, <span class="mono">Product 2</span>, and so on. Each one needs the name of the product sold before you can submit. Coaching = 2 means two product names, no exceptions.
         </li>
-        <li><b>Communication</b> — log Zoom Meetings, Calls Made and Meetings as counts, paste their recording/sheet/MOM links if you have them, log WhatsApp Message Sent as a count, and set Task Module Filled to Yes, No or Pending.</li>
-        <li><b>Section 2 · Follow-up Tasks</b> — for each of the 9 standard tasks (see <a href="#ref-followup">full list</a>), enter how many you completed today and an optional remark.</li>
+        <li><b>Section 2 · Follow-up Tasks</b> — for each of the 12 standard tasks (see <a href="#ref-followup">full list</a>), enter how many you completed today and an optional remark.</li>
         <li><b>Section 3 · Extra Initiatives</b> — Leads Committed and Leads Generated.</li>
         <li>Write a one-line <b>Summary</b> of your day, then <b>Submit Report</b>.</li>
       </ol>
@@ -469,45 +468,33 @@
           <tbody>
             <tr><td>Coaching</td><td>Coaching sessions closed today. Each unit needs a product-sold name (see below).</td></tr>
             <tr><td>Admission</td><td>Admissions confirmed today. Counts toward the "Admissions" KPI app-wide.</td></tr>
-            <tr><td>Others (₹)</td><td>Other revenue not covered by the categories above.</td></tr>
-            <tr><td>Ref Revenue (₹)</td><td>Revenue from referrals.</td></tr>
-            <tr><td>Wire Transfer / Fees</td><td>Wire transfers or fee payments processed today.</td></tr>
-            <tr><td>Got Visa</td><td>Visas granted today.</td></tr>
-            <tr><td>App. File (Upcoming Intake)</td><td>Application files started for the upcoming intake.</td></tr>
-            <tr><td>App. File (Next Intake)</td><td>Application files started for the intake after that.</td></tr>
+            <tr><td>Calls Made</td><td>Calls made today, for that country.</td></tr>
+            <tr><td>Offline Meeting</td><td>In-person meetings held today, for that country.</td></tr>
+            <tr><td>Online Meeting</td><td>Video/online meetings held today, for that country.</td></tr>
+            <tr><td>WhatsApp Message Sent</td><td>WhatsApp messages sent today, for that country.</td></tr>
+            <tr><td>Task Module Filled</td><td>Yes / No / Pending — not a count, doesn't add into the numeric totals.</td></tr>
             <tr><td>Remarks</td><td>Free text, specific to that country's row.</td></tr>
           </tbody>
         </table>
       </div>
 
-      <h3 id="ref-followup">Section 2 · The 9 Follow-up Tasks</h3>
+      <h3 id="ref-followup">Section 2 · The 12 Follow-up Tasks</h3>
       <div class="table-wrap">
         <table>
           <thead><tr><th>#</th><th>Task</th></tr></thead>
           <tbody>
             <tr><td class="num">1</td><td>Email Checking</td></tr>
-            <tr><td class="num">2</td><td>Got Visa &amp; Fees Payment update in Agent Sheet</td></tr>
-            <tr><td class="num">3</td><td>Got Visa Update in App</td></tr>
+            <tr><td class="num">2</td><td>Got Visa &amp; Fees Payment Update in the Agent Sheet</td></tr>
+            <tr><td class="num">3</td><td>Got Visa Update in the App</td></tr>
             <tr><td class="num">4</td><td>Data Update in K-Apply as per the BRD Sheet</td></tr>
-            <tr><td class="num">5</td><td>Calling for Loan data &amp; Maintaining Update in the sheet</td></tr>
-            <tr><td class="num">6</td><td>Preparing the Visitor Visa File</td></tr>
-            <tr><td class="num">7</td><td>Follow up on the ongoing case</td></tr>
-            <tr><td class="num">8</td><td>Refund status checking and follow-up if required</td></tr>
-            <tr><td class="num">9</td><td>Fees receipt &amp; PAL follow-up</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h3>Communication fields</h3>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
-          <tbody>
-            <tr><td>Zoom Meetings</td><td class="num">Count</td><td>Optional recording/meeting link field alongside it</td></tr>
-            <tr><td>Calls Made</td><td class="num">Count</td><td>Optional Google Sheet link alongside it</td></tr>
-            <tr><td>Meetings</td><td class="num">Count</td><td>Optional MOM (minutes of meeting) link alongside it</td></tr>
-            <tr><td>WhatsApp Message Sent</td><td class="num">Count</td><td>—</td></tr>
-            <tr><td>Task Module Filled</td><td>Yes / No / Pending</td><td>Not a count — excluded from communication totals</td></tr>
+            <tr><td class="num">5</td><td>Calling for Loan Data</td></tr>
+            <tr><td class="num">6</td><td>Maintaining Loan Updates in the Sheet</td></tr>
+            <tr><td class="num">7</td><td>Preparing Visitor Visa Files</td></tr>
+            <tr><td class="num">8</td><td>Follow-up on Ongoing Cases</td></tr>
+            <tr><td class="num">9</td><td>Refund Status Checking &amp; Follow-up, if Required</td></tr>
+            <tr><td class="num">10</td><td>Fees Receipt &amp; PAL Follow-up</td></tr>
+            <tr><td class="num">11</td><td>Refund Application</td></tr>
+            <tr><td class="num">12</td><td>Deferral Application</td></tr>
           </tbody>
         </table>
       </div>

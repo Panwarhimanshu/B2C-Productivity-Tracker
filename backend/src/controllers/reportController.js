@@ -10,7 +10,6 @@ const { getDateRange } = require('../utils/helpers');
 const {
   COUNTRIES,
   PROFILE_NUMERIC_KEYS,
-  COMMUNICATION_ITEMS,
   computeReportTotals,
   validateCoachingProducts,
   countriesForDepartment,
@@ -328,7 +327,6 @@ const getTrackerSummary = async (req, res, next) => {
     }, {});
     const kpiTotals = PROFILE_NUMERIC_KEYS.reduce((o, k) => ({ ...o, [k]: 0 }), {});
     const kpiTargets = { coachingTarget: 0, admissionTarget: 0 };
-    const communication = COMMUNICATION_ITEMS.filter((c) => !c.options).reduce((o, c) => ({ ...o, [c.key]: 0 }), {});
     const followUp = { done: 0 };
     const leads = { committed: 0, generated: 0 };
 
@@ -346,7 +344,6 @@ const getTrackerSummary = async (req, res, next) => {
         });
       });
       const totals = computeReportTotals(tasks);
-      COMMUNICATION_ITEMS.filter((c) => !c.options).forEach(({ key }) => { communication[key] += totals.communication[key]; });
       followUp.done += totals.followUp.done;
       leads.committed += totals.leads.committed;
       leads.generated += totals.leads.generated;
@@ -381,7 +378,6 @@ const getTrackerSummary = async (req, res, next) => {
         kpiTargets,
         targetMonth,
         targetYear,
-        communication,
         followUp,
         leads,
         reportsCount: reports.length,

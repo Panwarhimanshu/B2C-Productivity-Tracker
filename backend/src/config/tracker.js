@@ -7,16 +7,16 @@ const COUNTRIES = ['Canada', 'UK', 'USA', 'Germany', 'Dubai', 'Europe'];
 // Section 1 – Profile grid columns (per country). `num: true` => aggregated as a sum.
 // coachingAchieved / admissionAchieved are entered daily and roll up against that
 // country's monthly Target (see models/Target.js) — the target itself is not stored
-// on the report, it's fetched separately for reference.
+// on the report, it's fetched separately for reference. `options` marks a categorical
+// (non-numeric, non-summable) column rendered as a dropdown instead of a number input.
 const PROFILE_COLUMNS = [
   { key: 'coachingAchieved', label: 'Coaching', num: true, targetKey: 'coachingTarget' },
   { key: 'admissionAchieved', label: 'Admission', num: true, targetKey: 'admissionTarget' },
-  { key: 'revenueOthers', label: 'Others (₹)', num: true },
-  { key: 'refRevenue', label: 'Ref Revenue (₹)', num: true },
-  { key: 'wireTransferFees', label: 'Wire Transfer / Fees', num: true },
-  { key: 'gotVisa', label: 'Got Visa', num: true },
-  { key: 'applicationFileUpcomingIntake', label: 'App. File (Upcoming Intake)', num: true },
-  { key: 'applicationFileNextIntake', label: 'App. File (Next Intake)', num: true },
+  { key: 'callsMade', label: 'Calls Made', num: true },
+  { key: 'offlineMeeting', label: 'Offline Meeting', num: true },
+  { key: 'onlineMeeting', label: 'Online Meeting', num: true },
+  { key: 'whatsappMessageSent', label: 'WhatsApp Message Sent', num: true },
+  { key: 'taskModuleFilled', label: 'Task Module Filled', num: false, options: ['Yes', 'No', 'Pending'] },
   { key: 'remarks', label: 'Remarks', num: false },
 ];
 
@@ -35,14 +35,6 @@ const FOLLOW_UP_TASKS = [
   'Fees Receipt & PAL Follow-up',
   'Refund Application',
   'Deferral Application',
-];
-
-const COMMUNICATION_ITEMS = [
-  { key: 'zoomMeetings', label: 'Zoom Meetings' },
-  { key: 'callsMade', label: 'Calls Made' },
-  { key: 'meetings', label: 'Meetings' },
-  { key: 'whatsappMessageSent', label: 'WhatsApp Message Sent' },
-  { key: 'taskModuleFilled', label: 'Task Module Filled', options: ['Yes', 'No', 'Pending'] },
 ];
 
 // Resolve which COUNTRIES a department maps to, by exact (case-insensitive) name match.
@@ -64,7 +56,6 @@ const computeReportTotals = (tasks) => {
   const t = tasks || {};
   const profile = Array.isArray(t.profile) ? t.profile : [];
   const followUps = Array.isArray(t.followUpTasks) ? t.followUpTasks : [];
-  const comm = t.communication || {};
   const extra = t.extraInitiatives || {};
 
   const profileTotals = {};
@@ -74,16 +65,9 @@ const computeReportTotals = (tasks) => {
 
   const followUpDone = followUps.reduce((s, r) => s + num(r?.done), 0);
 
-  const communicationTotals = {};
-  COMMUNICATION_ITEMS.forEach(({ key, options }) => {
-    if (options) return; // categorical (e.g. Yes/No/Pending) — not summable
-    communicationTotals[key] = num(comm[key]);
-  });
-
   return {
     profile: profileTotals,
     followUp: { done: followUpDone },
-    communication: communicationTotals,
     leads: {
       committed: num(extra.leadsCommitted),
       generated: num(extra.leadsGenerated),
@@ -115,7 +99,6 @@ module.exports = {
   PROFILE_COLUMNS,
   PROFILE_NUMERIC_KEYS,
   FOLLOW_UP_TASKS,
-  COMMUNICATION_ITEMS,
   num,
   computeReportTotals,
   validateCoachingProducts,

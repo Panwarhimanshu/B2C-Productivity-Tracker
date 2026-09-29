@@ -10,12 +10,11 @@ export const COUNTRIES = ['Canada', 'UK', 'USA', 'Germany', 'Dubai', 'Europe'];
 export const PROFILE_COLUMNS = [
   { key: 'coachingAchieved', label: 'Coaching', type: 'number', targetKey: 'coachingTarget' },
   { key: 'admissionAchieved', label: 'Admission', type: 'number', targetKey: 'admissionTarget' },
-  { key: 'revenueOthers', label: 'Others (₹)', type: 'number' },
-  { key: 'refRevenue', label: 'Ref Revenue (₹)', type: 'number' },
-  { key: 'wireTransferFees', label: 'Wire Transfer / Fees', type: 'number' },
-  { key: 'gotVisa', label: 'Got Visa', type: 'number' },
-  { key: 'applicationFileUpcomingIntake', label: 'App. File (Upcoming Intake)', type: 'number' },
-  { key: 'applicationFileNextIntake', label: 'App. File (Next Intake)', type: 'number' },
+  { key: 'callsMade', label: 'Calls Made', type: 'number' },
+  { key: 'offlineMeeting', label: 'Offline Meeting', type: 'number' },
+  { key: 'onlineMeeting', label: 'Online Meeting', type: 'number' },
+  { key: 'whatsappMessageSent', label: 'WhatsApp Message Sent', type: 'number' },
+  { key: 'taskModuleFilled', label: 'Task Module Filled', type: 'select', options: ['Yes', 'No', 'Pending'] },
   { key: 'remarks', label: 'Remarks', type: 'text' },
 ];
 
@@ -36,14 +35,6 @@ export const FOLLOW_UP_TASKS = [
   'Deferral Application',
 ];
 
-export const COMMUNICATION_ITEMS = [
-  { key: 'zoomMeetings',    label: 'Zoom Meetings',      linkKey: 'zoomMeetingLink',  linkLabel: 'Recording / Meeting Link' },
-  { key: 'callsMade',       label: 'Calls Made',         linkKey: 'callsSheetLink',   linkLabel: 'Google Sheet Link' },
-  { key: 'meetings',        label: 'Meetings',           linkKey: 'meetingMomLink',   linkLabel: 'MOM Link' },
-  { key: 'whatsappMessageSent', label: 'WhatsApp Message Sent' },
-  { key: 'taskModuleFilled',    label: 'Task Module Filled', options: ['Yes', 'No', 'Pending'] },
-];
-
 export const num = (v) => {
   const n = parseFloat(v);
   return Number.isFinite(n) ? n : 0;
@@ -60,11 +51,6 @@ export const emptyTracker = (countries = COUNTRIES) => ({
     return row;
   }),
   followUpTasks: FOLLOW_UP_TASKS.map((task) => ({ task, done: '', remarks: '' })),
-  communication: COMMUNICATION_ITEMS.reduce((acc, c) => ({
-    ...acc,
-    [c.key]: '',
-    ...(c.linkKey ? { [c.linkKey]: '' } : {}),
-  }), {}),
   extraInitiatives: { leadsCommitted: '', leadsGenerated: '' },
   summary: '',
 });
@@ -107,7 +93,6 @@ export const normalizeTracker = (tasks, countries = COUNTRIES) => {
       return stored ? { ...row, ...stored } : row;
     });
   }
-  if (tasks.communication) base.communication = { ...base.communication, ...tasks.communication };
   if (tasks.extraInitiatives) base.extraInitiatives = { ...base.extraInitiatives, ...tasks.extraInitiatives };
   return base;
 };
