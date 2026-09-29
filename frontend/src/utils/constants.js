@@ -1,14 +1,25 @@
 export const ROLES = {
   COUNSELLOR: 'COUNSELLOR',
+  ONSHORE_COUNSELLOR: 'ONSHORE_COUNSELLOR',
   HOD: 'HOD',
+  ASSOCIATE_HOD: 'ASSOCIATE_HOD',
   SUPER_ADMIN: 'SUPER_ADMIN',
 };
 
 export const ROLE_LABELS = {
   COUNSELLOR: 'Counsellor',
+  ONSHORE_COUNSELLOR: 'Onshore Counsellor',
   HOD: 'Head of Department',
+  ASSOCIATE_HOD: 'Associate HOD',
   SUPER_ADMIN: 'Super Admin',
 };
+
+// Onshore Counsellor behaves exactly like Counsellor; Associate HOD gets HOD-level department
+// visibility (All Reports, Report Logs, Dashboard) but also submits its own daily report like a
+// Counsellor, and — unlike HOD — can't set Monthly Targets or edit the department org chart.
+export const COUNSELLOR_LIKE_ROLES = ['COUNSELLOR', 'ONSHORE_COUNSELLOR'];
+export const HOD_LIKE_ROLES = ['HOD', 'ASSOCIATE_HOD'];
+export const REPORT_SUBMITTER_ROLES = ['COUNSELLOR', 'ONSHORE_COUNSELLOR', 'ASSOCIATE_HOD'];
 
 export const PERIODS = [
   { value: 'daily', label: 'Today' },

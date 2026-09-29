@@ -23,14 +23,17 @@ export const PROFILE_NUMERIC_KEYS = PROFILE_COLUMNS.filter((c) => c.type === 'nu
 
 export const FOLLOW_UP_TASKS = [
   'Email Checking',
-  'Got Visa & Fees Payment update in Agent Sheet',
-  'Got Visa Update in App',
+  'Got Visa & Fees Payment Update in the Agent Sheet',
+  'Got Visa Update in the App',
   'Data Update in K-Apply as per the BRD Sheet',
-  'Calling for Loan data & Maintaining Update in the sheet',
-  'Preparing the Visitor Visa File',
-  'Follow up on the ongoing case',
-  'Refund status checking and follow-up if required',
-  'Fees receipt & PAL follow-up',
+  'Calling for Loan Data',
+  'Maintaining Loan Updates in the Sheet',
+  'Preparing Visitor Visa Files',
+  'Follow-up on Ongoing Cases',
+  'Refund Status Checking & Follow-up, if Required',
+  'Fees Receipt & PAL Follow-up',
+  'Refund Application',
+  'Deferral Application',
 ];
 
 export const COMMUNICATION_ITEMS = [

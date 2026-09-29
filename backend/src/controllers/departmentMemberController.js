@@ -1,16 +1,8 @@
 const DepartmentMember = require('../models/DepartmentMember');
 const cloudinary = require('../config/cloudinary');
+const { isCounsellorLike } = require('../config/roles');
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB base64 input limit
-
-// HOD can only manage members within their own department.
-const assertDepartmentAccess = (req, departmentId) => {
-  if (req.user.role === 'HOD' && String(departmentId) !== String(req.user.departmentId)) {
-    const err = new Error('Access denied');
-    err.statusCode = 403;
-    throw err;
-  }
-};
 
 const getMembers = async (req, res, next) => {
   try {
@@ -20,12 +12,12 @@ const getMembers = async (req, res, next) => {
     if (req.user.role === 'SUPER_ADMIN') {
       if (departmentId) filter.departmentId = departmentId;
     } else {
-      // HOD and Counsellor only ever see their own department's tree.
+      // Everyone else only ever sees their own department's tree.
       filter.departmentId = req.user.departmentId;
     }
 
-    // Counsellors get the public view — hidden entries are for editors (HOD/Super Admin) only.
-    if (req.user.role === 'COUNSELLOR') filter.visible = true;
+    // Counsellor-like roles get the public view — hidden entries are for HOD/Super Admin.
+    if (isCounsellorLike(req.user.role)) filter.visible = true;
 
     const members = await DepartmentMember.find(filter).sort({ team: 1, order: 1, name: 1 });
     res.json({ success: true, data: members });
@@ -58,7 +50,6 @@ const uploadPhotoIfProvided = async (photo, publicId) => {
 const createMember = async (req, res, next) => {
   try {
     const { departmentId, team, name, designation, phone, email, whatToContactFor, order, visible, photo } = req.body;
-    assertDepartmentAccess(req, departmentId);
 
     const member = await DepartmentMember.create({
       departmentId, team, name, designation, phone, email, whatToContactFor, order, visible,
@@ -81,7 +72,6 @@ const updateMember = async (req, res, next) => {
   try {
     const member = await DepartmentMember.findById(req.params.id).select('+photoPublicId');
     if (!member) return res.status(404).json({ success: false, message: 'Member not found' });
-    assertDepartmentAccess(req, member.departmentId);
 
     const { team, name, designation, phone, email, whatToContactFor, order, visible, photo } = req.body;
     member.set({ team, name, designation, phone, email, whatToContactFor, order, visible });
@@ -112,7 +102,6 @@ const deleteMember = async (req, res, next) => {
   try {
     const member = await DepartmentMember.findById(req.params.id).select('+photoPublicId');
     if (!member) return res.status(404).json({ success: false, message: 'Member not found' });
-    assertDepartmentAccess(req, member.departmentId);
 
     if (member.photoPublicId) {
       await cloudinary.uploader.destroy(member.photoPublicId).catch(() => {});

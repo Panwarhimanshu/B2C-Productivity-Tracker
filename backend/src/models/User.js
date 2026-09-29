@@ -6,7 +6,12 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true, minlength: 6, select: false },
-    role: { type: String, enum: ['COUNSELLOR', 'HOD', 'SUPER_ADMIN'], required: true, default: 'COUNSELLOR' },
+    role: {
+      type: String,
+      enum: ['COUNSELLOR', 'ONSHORE_COUNSELLOR', 'HOD', 'ASSOCIATE_HOD', 'SUPER_ADMIN'],
+      required: true,
+      default: 'COUNSELLOR',
+    },
     designation: { type: String, trim: true, default: '' },
     employeeId: { type: String, unique: true, sparse: true, trim: true },
     avatar:          { type: String, default: null },

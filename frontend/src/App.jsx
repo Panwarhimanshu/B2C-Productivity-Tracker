@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { HOD_LIKE_ROLES, REPORT_SUBMITTER_ROLES } from './utils/constants';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Layout from './components/common/Layout';
 import Login from './pages/Login';
@@ -64,32 +65,32 @@ const App = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
 
-          {/* Counsellor Routes */}
+          {/* Report-submitting roles: Counsellor, Onshore Counsellor, Associate HOD */}
           <Route
             path="/submit-report"
-            element={<ProtectedRoute allowedRoles={['COUNSELLOR']}><SubmitReport /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={REPORT_SUBMITTER_ROLES}><SubmitReport /></ProtectedRoute>}
           />
           <Route
             path="/my-reports"
-            element={<ProtectedRoute allowedRoles={['COUNSELLOR']}><MyReports /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={REPORT_SUBMITTER_ROLES}><MyReports /></ProtectedRoute>}
           />
           <Route
             path="/my-performance"
-            element={<ProtectedRoute allowedRoles={['COUNSELLOR']}><Performance /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={REPORT_SUBMITTER_ROLES}><Performance /></ProtectedRoute>}
           />
 
-          {/* HOD + Super Admin Routes (reports) */}
+          {/* HOD-like (HOD, Associate HOD) + Super Admin Routes (department-wide reports) */}
           <Route
             path="/all-reports"
-            element={<ProtectedRoute allowedRoles={['HOD', 'SUPER_ADMIN']}><AllReports /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={[...HOD_LIKE_ROLES, 'SUPER_ADMIN']}><AllReports /></ProtectedRoute>}
           />
           <Route
             path="/report-logs"
-            element={<ProtectedRoute allowedRoles={['HOD', 'SUPER_ADMIN']}><ReportLogs /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={[...HOD_LIKE_ROLES, 'SUPER_ADMIN']}><ReportLogs /></ProtectedRoute>}
           />
           <Route
             path="/department-management"
-            element={<ProtectedRoute allowedRoles={['COUNSELLOR', 'HOD', 'SUPER_ADMIN']}><DepartmentManagement /></ProtectedRoute>}
+            element={<ProtectedRoute><DepartmentManagement /></ProtectedRoute>}
           />
 
           {/* Super Admin Routes */}
@@ -99,7 +100,7 @@ const App = () => {
           />
           <Route
             path="/target-management"
-            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><TargetManagement /></ProtectedRoute>}
+            element={<ProtectedRoute allowedRoles={['HOD', 'SUPER_ADMIN']}><TargetManagement /></ProtectedRoute>}
           />
         </Route>
       </Route>

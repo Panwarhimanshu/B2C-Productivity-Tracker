@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Department = require('../models/Department');
 const AuditLog = require('../models/AuditLog');
+const { isHodLike, ALL_ROLES } = require('../config/roles');
 
 const getUsers = async (req, res, next) => {
   try {
@@ -8,8 +9,8 @@ const getUsers = async (req, res, next) => {
 
     const filter = { isActive: isActive === 'true' };
 
-    if (role) filter.role = role;
-    if (req.user.role === 'HOD' || req.user.role === 'COUNSELLOR') {
+    if (role) filter.role = role.includes(',') ? { $in: role.split(',') } : role;
+    if (req.user.role !== 'SUPER_ADMIN') {
       filter.departmentId = req.user.departmentId;
     } else if (departmentId) {
       filter.departmentId = departmentId;
@@ -46,7 +47,7 @@ const getUserById = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id).populate('departmentId', 'name');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    if (req.user.role === 'HOD' && String(user.departmentId?._id) !== String(req.user.departmentId)) {
+    if (isHodLike(req.user.role) && String(user.departmentId?._id) !== String(req.user.departmentId)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
     res.json({ success: true, data: user });
@@ -199,7 +200,7 @@ const importUsers = async (req, res, next) => {
         }
 
         const role = (row.role || 'COUNSELLOR').trim().toUpperCase();
-        if (!['COUNSELLOR', 'HOD', 'SUPER_ADMIN'].includes(role)) {
+        if (!ALL_ROLES.includes(role)) {
           errors.push({ row: rowNum, email, message: `Invalid role "${row.role}"` });
           continue;
         }

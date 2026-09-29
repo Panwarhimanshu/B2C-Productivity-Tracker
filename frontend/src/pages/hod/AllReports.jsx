@@ -4,7 +4,7 @@ import { reportsAPI } from '../../api/reports';
 import { usersAPI } from '../../api/users';
 import { departmentsAPI } from '../../api/departments';
 import { useAuth } from '../../context/AuthContext';
-import { PERIODS, REPORT_STATUS_COLORS } from '../../utils/constants';
+import { PERIODS, REPORT_STATUS_COLORS, HOD_LIKE_ROLES, REPORT_SUBMITTER_ROLES } from '../../utils/constants';
 import { formatDate, downloadBlob, getErrorMessage } from '../../utils/helpers';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EditReportModal from '../../components/reports/EditReportModal';
@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 
 const AllReports = () => {
   const { user } = useAuth();
-  const isHOD = user?.role === 'HOD';
+  const isHOD = HOD_LIKE_ROLES.includes(user?.role);
   const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -25,7 +25,7 @@ const AllReports = () => {
 
   const fetchMeta = async () => {
     const [usersRes, deptRes] = await Promise.all([
-      usersAPI.getAll({ role: 'COUNSELLOR' }),
+      usersAPI.getAll({ role: REPORT_SUBMITTER_ROLES.join(',') }),
       departmentsAPI.getAll(),
     ]);
     setUsers(usersRes.data.data);

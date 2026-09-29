@@ -9,9 +9,11 @@ router.use(authenticate);
 
 router.get('/', getMembers);
 
+// Org-chart directory editing is Super Admin only — HOD/Associate HOD get view access via
+// GET / above, same as everyone else, but can't add/edit/delete entries or new teams.
 router.post(
   '/',
-  authorize('SUPER_ADMIN', 'HOD'),
+  authorize('SUPER_ADMIN'),
   [
     body('departmentId').notEmpty().withMessage('Department is required'),
     body('name').notEmpty().trim().withMessage('Name required'),
@@ -21,7 +23,7 @@ router.post(
   createMember
 );
 
-router.put('/:id', authorize('SUPER_ADMIN', 'HOD'), updateMember);
-router.delete('/:id', authorize('SUPER_ADMIN', 'HOD'), deleteMember);
+router.put('/:id', authorize('SUPER_ADMIN'), updateMember);
+router.delete('/:id', authorize('SUPER_ADMIN'), deleteMember);
 
 module.exports = router;

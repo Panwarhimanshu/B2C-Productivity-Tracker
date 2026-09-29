@@ -41,9 +41,7 @@ const ReportLogs = () => {
           </select>
           <select className="input-field w-auto text-sm" value={role} onChange={(e) => setFilter(setRole)(e.target.value)}>
             <option value="">All Roles</option>
-            <option value="COUNSELLOR">Counsellor</option>
-            <option value="HOD">Head of Department</option>
-            <option value="SUPER_ADMIN">Super Admin</option>
+            {Object.entries(ROLE_LABELS).map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
           </select>
         </div>
       </div>

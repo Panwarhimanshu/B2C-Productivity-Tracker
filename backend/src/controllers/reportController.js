@@ -15,15 +15,16 @@ const {
   validateCoachingProducts,
   countriesForDepartment,
 } = require('../config/tracker');
+const { COUNSELLOR_LIKE_ROLES, HOD_LIKE_ROLES, isCounsellorLike, isHodLike } = require('../config/roles');
 
 // Headline count shown in lists/cards: total admissions achieved across countries.
 const applicationsCount = (tasks) => computeReportTotals(tasks).profile.admissionAchieved || 0;
 
-// Notify all active HODs/Super Admins (in-app + email) when a report is submitted.
+// Notify all active HODs/Associate HODs/Super Admins (in-app + email) when a report is submitted.
 // Best-effort: failures here must never fail the report submission itself.
 const notifyReportSubmitted = async (report, rm) => {
   try {
-    const recipients = await User.find({ role: { $in: ['HOD', 'SUPER_ADMIN'] }, isActive: true }).select('name email');
+    const recipients = await User.find({ role: { $in: [...HOD_LIKE_ROLES, 'SUPER_ADMIN'] }, isActive: true }).select('name email');
 
     const uniqueRecipients = recipients.filter((r) => r._id.toString() !== rm._id.toString());
 
@@ -133,7 +134,7 @@ const getAllReports = async (req, res, next) => {
 
     const userFilter = { isActive: true };
     if (userId) userFilter._id = userId;
-    if (req.user.role === 'HOD') {
+    if (isHodLike(req.user.role)) {
       userFilter.departmentId = req.user.departmentId;
     } else if (departmentId) {
       userFilter.departmentId = departmentId;
@@ -170,7 +171,7 @@ const updateReport = async (req, res, next) => {
     const report = await DailyReport.findById(req.params.id);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
 
-    if (req.user.role === 'COUNSELLOR') {
+    if (isCounsellorLike(req.user.role)) {
       if (report.userId.toString() !== req.user._id.toString()) {
         return res.status(403).json({ success: false, message: 'Access denied' });
       }
@@ -183,7 +184,9 @@ const updateReport = async (req, res, next) => {
       }
     }
 
-    if (req.user.role === 'HOD') {
+    // Associate HOD gets the same department-wide edit access as HOD, including their own
+    // report (not restricted to same-day only, unlike Counsellor/Onshore Counsellor above).
+    if (isHodLike(req.user.role)) {
       const reportOwner = await User.findById(report.userId).select('departmentId');
       if (!reportOwner || String(reportOwner.departmentId) !== String(req.user.departmentId)) {
         return res.status(403).json({ success: false, message: 'Access denied' });
@@ -234,9 +237,9 @@ const getAnalytics = async (req, res, next) => {
     const { startDate, endDate } = getDateRange(period);
 
     const userFilter = { isActive: true };
-    if (req.user.role === 'COUNSELLOR') {
+    if (isCounsellorLike(req.user.role)) {
       userFilter._id = req.user._id;
-    } else if (req.user.role === 'HOD') {
+    } else if (isHodLike(req.user.role)) {
       userFilter.departmentId = req.user.departmentId;
     }
 
@@ -284,11 +287,11 @@ const getTrackerSummary = async (req, res, next) => {
 
     // Resolve which users are in scope.
     const userFilter = { isActive: true };
-    if (req.user.role === 'COUNSELLOR') {
+    if (isCounsellorLike(req.user.role)) {
       userFilter._id = req.user._id;
     } else {
       if (userId) userFilter._id = userId;
-      if (req.user.role === 'HOD') {
+      if (isHodLike(req.user.role)) {
         userFilter.departmentId = req.user.departmentId;
       } else if (departmentId) {
         userFilter.departmentId = departmentId;
@@ -303,10 +306,10 @@ const getTrackerSummary = async (req, res, next) => {
       date: { $gte: startDate, $lte: endDate },
     }).select('tasks').lean();
 
-    // Only show country rows relevant to the viewer's own department (Counsellor/HOD are
-    // scoped to their single mapped country; Super Admin sees all, or one via ?departmentId).
+    // Only show country rows relevant to the viewer's own department (everyone but Super Admin
+    // is scoped to their single mapped country; Super Admin sees all, or one via ?departmentId).
     let scopeCountries = COUNTRIES;
-    if (req.user.role === 'COUNSELLOR' || req.user.role === 'HOD') {
+    if (req.user.role !== 'SUPER_ADMIN') {
       if (req.user.departmentId) {
         const dept = await Department.findById(req.user.departmentId).select('name').lean();
         scopeCountries = countriesForDepartment(dept?.name);
@@ -402,7 +405,7 @@ const exportReports = async (req, res, next) => {
 
     const userFilter = {};
     if (userId) userFilter._id = userId;
-    if (req.user.role === 'HOD') {
+    if (isHodLike(req.user.role)) {
       userFilter.departmentId = req.user.departmentId;
     } else if (departmentId) {
       userFilter.departmentId = departmentId;
@@ -427,7 +430,7 @@ const exportReports = async (req, res, next) => {
     const monthStart = new Date(targetYear, targetMonth - 1, 1);
     const monthEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
 
-    const counsellorFilter = { isActive: true, role: 'COUNSELLOR', ...userFilter };
+    const counsellorFilter = { isActive: true, role: { $in: COUNSELLOR_LIKE_ROLES }, ...userFilter };
     const scopedCounsellors = await User.find(counsellorFilter).select('_id name employeeId');
     const scopedIds = scopedCounsellors.map((u) => u._id);
 
@@ -503,9 +506,9 @@ const getReportLogs = async (req, res, next) => {
       filter.performedBy = { $in: matchedUsers.map((u) => u._id) };
     }
 
-    // HOD: only logs for reports owned by counsellors in their own department.
+    // HOD/Associate HOD: only logs for reports owned by their own department.
     let deptOwnerIds = null;
-    if (req.user.role === 'HOD') {
+    if (isHodLike(req.user.role)) {
       const deptUsers = await User.find({ departmentId: req.user.departmentId }).select('_id');
       deptOwnerIds = new Set(deptUsers.map((u) => u._id.toString()));
     }

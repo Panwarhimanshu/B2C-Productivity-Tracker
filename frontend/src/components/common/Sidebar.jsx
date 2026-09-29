@@ -21,6 +21,7 @@ const navByRole = {
     { to: '/all-reports', icon: ClipboardList, label: 'All Reports' },
     { to: '/report-logs', icon: History, label: 'Report Logs' },
     { to: '/department-management', icon: MapPin, label: 'My Department' },
+    { to: '/target-management', icon: Target, label: 'Monthly Targets' },
     { to: '/profile', icon: Users, label: 'Profile' },
   ],
   SUPER_ADMIN: [
@@ -33,6 +34,20 @@ const navByRole = {
     { to: '/profile', icon: Users, label: 'Profile' },
   ],
 };
+// Onshore Counsellor is identical to Counsellor.
+navByRole.ONSHORE_COUNSELLOR = navByRole.COUNSELLOR;
+// Associate HOD sits between the two: submits its own report like a Counsellor, plus HOD's
+// department-wide oversight — minus Monthly Targets (HOD/Super Admin only).
+navByRole.ASSOCIATE_HOD = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/submit-report', icon: FileText, label: 'Submit Report' },
+  { to: '/my-reports', icon: ClipboardList, label: 'My Reports' },
+  { to: '/my-performance', icon: TrendingUp, label: 'Performance' },
+  { to: '/all-reports', icon: ClipboardList, label: 'All Reports' },
+  { to: '/report-logs', icon: History, label: 'Report Logs' },
+  { to: '/department-management', icon: MapPin, label: 'My Department' },
+  { to: '/profile', icon: Users, label: 'Profile' },
+];
 
 const Sidebar = ({ collapsed, onToggle }) => {
   const { user } = useAuth();

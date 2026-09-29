@@ -10,7 +10,19 @@ import { parseCSV, downloadCSV } from '../../utils/csv';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
-const USER_IMPORT_HEADERS = ['name', 'email', 'password', 'role', 'designation', 'employeeId', 'department', 'joiningDate'];
+const USER_IMPORT_HEADERS = ['name', 'email', 'password', 'employeeId', 'joiningDate', 'role', 'designation', 'department'];
+// Human-readable labels for the columns above, in the same order, with required ones marked —
+// password is only required for brand-new emails (existing ones keep their password if left blank).
+const USER_IMPORT_FIELD_LABELS = [
+  { key: 'name', label: 'Full Name', required: true },
+  { key: 'email', label: 'Email', required: true },
+  { key: 'password', label: 'Password', required: true },
+  { key: 'employeeId', label: 'Employee ID', required: false },
+  { key: 'joiningDate', label: 'Joining Date', required: false },
+  { key: 'role', label: 'Role', required: true },
+  { key: 'designation', label: 'Designation', required: false },
+  { key: 'department', label: 'Department', required: false },
+];
 const TARGET_IMPORT_HEADERS = ['email', 'country', 'year', 'month', 'coachingTarget', 'admissionTarget'];
 
 const ImportResultSummary = ({ result, counts }) => (
@@ -341,7 +353,9 @@ const UserManagement = () => {
               <div>
                 <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Import Users (Login)</h3>
                 <p className="text-xs text-gray-500 mt-1">
-                  Columns: {USER_IMPORT_HEADERS.join(', ')}. The department column must match an existing department's name (see Department Management). Existing emails are updated (password kept unless a new one is given); new emails are created (password required, min 6 characters).
+                  Columns, in order: {USER_IMPORT_FIELD_LABELS.map((f) => `${f.label}${f.required ? '*' : ''}`).join(', ')}.
+                  {' '}Department must match an existing department's name (see Department Management), or is left unassigned.
+                  {' '}Existing emails are updated (password kept unless a new one is given); new emails are created (password required, min 6 characters).
                 </p>
                 <div className="flex gap-2 mt-2">
                   <button type="button" onClick={downloadUserSample} className="btn-secondary text-xs py-1.5 px-3">

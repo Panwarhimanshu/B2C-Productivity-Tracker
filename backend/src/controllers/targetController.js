@@ -1,14 +1,39 @@
 const Target = require('../models/Target');
 const DailyReport = require('../models/DailyReport');
 const User = require('../models/User');
-const { COUNTRIES } = require('../config/tracker');
+const Department = require('../models/Department');
+const { COUNTRIES, countriesForDepartment } = require('../config/tracker');
+const { COUNSELLOR_LIKE_ROLES } = require('../config/roles');
 
 const monthRange = (year, month) => ({
   $gte: new Date(year, month - 1, 1),
   $lte: new Date(year, month, 0, 23, 59, 59),
 });
 
-// SUPER_ADMIN: create or update one country's monthly target for a user
+// HOD is restricted to setting targets for their own department's country/Counsellors —
+// Super Admin is unrestricted. Throws a 403-flagged error if an HOD tries to go outside that.
+const assertHodOwnDepartment = async (req, { country, targetUserId }) => {
+  if (req.user.role !== 'HOD') return;
+
+  const dept = await Department.findById(req.user.departmentId).select('name').lean();
+  const [ownCountry] = countriesForDepartment(dept?.name);
+  if (!ownCountry || ownCountry.toLowerCase() !== String(country).toLowerCase()) {
+    const err = new Error('You can only set targets for your own department\'s country');
+    err.statusCode = 403;
+    throw err;
+  }
+  if (targetUserId) {
+    const targetUser = await User.findById(targetUserId).select('departmentId role').lean();
+    const inDept = targetUser && String(targetUser.departmentId) === String(req.user.departmentId);
+    if (!inDept || !COUNSELLOR_LIKE_ROLES.includes(targetUser.role)) {
+      const err = new Error('That Counsellor is not in your department');
+      err.statusCode = 403;
+      throw err;
+    }
+  }
+};
+
+// HOD/SUPER_ADMIN: create or update one country's monthly target for a user
 const upsertTarget = async (req, res, next) => {
   try {
     const { userId, country, year, month, coachingTarget, admissionTarget } = req.body;
@@ -18,6 +43,7 @@ const upsertTarget = async (req, res, next) => {
     if (!COUNTRIES.includes(country)) {
       return res.status(400).json({ success: false, message: `Invalid country "${country}"` });
     }
+    await assertHodOwnDepartment(req, { country, targetUserId: userId });
 
     const target = await Target.findOneAndUpdate(
       { userId, country, year: Number(year), month: Number(month) },
@@ -34,14 +60,23 @@ const upsertTarget = async (req, res, next) => {
   }
 };
 
-// SUPER_ADMIN: table of all Counsellors' target + achieved-to-date for one country + month
+// HOD/SUPER_ADMIN: table of all Counsellors' target + achieved-to-date for one country + month.
+// HOD is locked to their own department's country and its Counsellors, regardless of query params.
 const getTargetsTable = async (req, res, next) => {
   try {
     const year = Number(req.query.year) || new Date().getFullYear();
     const month = Number(req.query.month) || new Date().getMonth() + 1;
-    const country = req.query.country || COUNTRIES[0];
+    let country = req.query.country || COUNTRIES[0];
 
-    const counsellors = await User.find({ role: 'COUNSELLOR', isActive: true })
+    const counsellorFilter = { role: { $in: COUNSELLOR_LIKE_ROLES }, isActive: true };
+    if (req.user.role === 'HOD') {
+      const dept = await Department.findById(req.user.departmentId).select('name').lean();
+      const [ownCountry] = countriesForDepartment(dept?.name);
+      country = ownCountry || country;
+      counsellorFilter.departmentId = req.user.departmentId;
+    }
+
+    const counsellors = await User.find(counsellorFilter)
       .select('name employeeId departmentId')
       .populate('departmentId', 'name');
     const counsellorIds = counsellors.map((c) => c._id);

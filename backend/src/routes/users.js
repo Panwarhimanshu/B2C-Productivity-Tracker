@@ -6,11 +6,12 @@ const {
 const { authenticate } = require('../middleware/auth');
 const { authorize } = require('../middleware/authorize');
 const { validate } = require('../middleware/validate');
+const { ALL_ROLES } = require('../config/roles');
 
 router.use(authenticate);
 
-router.get('/', authorize('COUNSELLOR', 'HOD', 'SUPER_ADMIN'), getUsers);
-router.get('/:id', authorize('HOD', 'SUPER_ADMIN'), getUserById);
+router.get('/', authorize(...ALL_ROLES), getUsers);
+router.get('/:id', authorize('HOD', 'ASSOCIATE_HOD', 'SUPER_ADMIN'), getUserById);
 
 router.post(
   '/',
@@ -19,7 +20,7 @@ router.post(
     body('name').notEmpty().trim().withMessage('Name required'),
     body('email').isEmail().withMessage('Valid email required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-    body('role').isIn(['COUNSELLOR', 'HOD', 'SUPER_ADMIN']).withMessage('Invalid role'),
+    body('role').isIn(ALL_ROLES).withMessage('Invalid role'),
   ],
   validate,
   createUser

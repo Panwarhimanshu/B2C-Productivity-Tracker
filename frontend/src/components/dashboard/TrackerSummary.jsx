@@ -6,7 +6,7 @@ const TABLE_KEYS = KPI_KEYS;
 const labelOf = (key) => PROFILE_COLUMNS.find((c) => c.key === key)?.label || key;
 const targetKeyOf = (key) => PROFILE_COLUMNS.find((c) => c.key === key)?.targetKey || null;
 
-// Small achieved-vs-target badge shown next to Coaching/Admission/Revenue figures.
+// Small achieved-vs-target badge shown next to Coaching/Admission figures.
 // No target set at all => nothing shown (nothing to compare against).
 const TargetBadge = ({ achieved, target }) => {
   if (!target) return null;
@@ -22,12 +22,15 @@ const TargetBadge = ({ achieved, target }) => {
   );
 };
 
-const TrackerSummary = ({ summary }) => {
+const TrackerSummary = ({ summary, departments = [] }) => {
   if (!summary) return null;
   const { kpiTotals = {}, kpiTargets = {}, perCountry = [], communication = {}, followUp = {}, leads = {}, targetMonth, targetYear } = summary;
   const monthLabel = targetMonth && targetYear
     ? new Date(targetYear, targetMonth - 1).toLocaleString('default', { month: 'long', year: 'numeric' })
     : null;
+  // Departments are named after countries by convention — look up each row's logo by matching
+  // its country name against a department name (case-insensitive).
+  const logoOf = (country) => departments.find((d) => d.name.toLowerCase() === country.toLowerCase())?.logo || null;
 
   return (
     <div className="space-y-6">
@@ -46,7 +49,7 @@ const TrackerSummary = ({ summary }) => {
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-0.5">Profile by Country</h3>
         {monthLabel && (
           <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-3">
-            Coaching / Admission / Revenue badges show this month's target status ({monthLabel})
+            Coaching / Admission badges show this month's target status ({monthLabel})
           </p>
         )}
         <div className="overflow-x-auto">
@@ -58,9 +61,20 @@ const TrackerSummary = ({ summary }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {perCountry.map((row) => (
+              {perCountry.map((row) => {
+                const logo = logoOf(row.country);
+                return (
                 <tr key={row.country}>
-                  <td className="px-2 py-2 font-medium text-gray-800 dark:text-gray-200">{row.country}</td>
+                  <td className="px-2 py-2 font-medium text-gray-800 dark:text-gray-200">
+                    <div className="flex items-center gap-2">
+                      {logo && (
+                        <span className="w-5 h-5 rounded-md overflow-hidden bg-white border border-gray-200 dark:border-gray-600 flex-shrink-0 flex items-center justify-center">
+                          <img src={logo} alt="" className="w-full h-full object-contain" />
+                        </span>
+                      )}
+                      {row.country}
+                    </div>
+                  </td>
                   {TABLE_KEYS.map((k) => {
                     const tKey = targetKeyOf(k);
                     return (
@@ -73,7 +87,8 @@ const TrackerSummary = ({ summary }) => {
                     );
                   })}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold text-gray-700 dark:text-gray-300">

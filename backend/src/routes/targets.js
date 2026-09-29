@@ -5,9 +5,11 @@ const { authorize } = require('../middleware/authorize');
 
 router.use(authenticate);
 
-router.get('/table',        authorize('SUPER_ADMIN'), getTargetsTable);
+// Associate HOD is deliberately excluded — they get department-wide report visibility, but
+// target-setting stays with HOD/Super Admin only.
+router.get('/table',        authorize('HOD', 'SUPER_ADMIN'), getTargetsTable);
 router.get('/user/:userId', getTargetWithActuals);
-router.post('/',            authorize('SUPER_ADMIN'), upsertTarget);
+router.post('/',            authorize('HOD', 'SUPER_ADMIN'), upsertTarget);
 router.post('/import',      authorize('SUPER_ADMIN'), importTargets);
 
 module.exports = router;

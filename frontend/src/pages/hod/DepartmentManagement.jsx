@@ -8,10 +8,12 @@ import { usersAPI } from '../../api/users';
 import { departmentMembersAPI } from '../../api/departmentMembers';
 import { useAuth } from '../../context/AuthContext';
 import { formatDate, getErrorMessage } from '../../utils/helpers';
+import { ROLE_LABELS, HOD_LIKE_ROLES, COUNSELLOR_LIKE_ROLES } from '../../utils/constants';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const emptyForm = { name: '', description: '' };
+const emptyNewHod = { name: '', email: '', password: '', employeeId: '' };
 
 const AVATAR_SIZE = 256;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -123,8 +125,9 @@ const PersonSection = ({ icon: Icon, color, title, people, emptyText, onAdd, onE
 const DepartmentManagement = () => {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isHOD = user?.role === 'HOD';
-  const canEditMembers = isSuperAdmin || isHOD;
+  // Org-chart directory editing (add/edit/delete members, add a new team) is Super Admin only —
+  // everyone else, HOD/Associate HOD included, gets read-only access to their own department.
+  const canEditMembers = isSuperAdmin;
 
   const [departments, setDepartments] = useState([]);
   const [hods, setHods] = useState([]);
@@ -136,6 +139,10 @@ const DepartmentManagement = () => {
   const [form, setForm] = useState(emptyForm);
   const [selectedHodIds, setSelectedHodIds] = useState([]);
   const [selectedCounsellorIds, setSelectedCounsellorIds] = useState([]);
+  // When non-null, the "Create New HOD" panel is open and its fields are required on submit.
+  const [newHodForm, setNewHodForm] = useState(null);
+  const [logoData, setLogoData] = useState(undefined); // undefined = unchanged, null = remove, data URL = new upload
+  const [logoPreview, setLogoPreview] = useState('');
   const [saving, setSaving] = useState(false);
   const [expandedIds, setExpandedIds] = useState(new Set());
 
@@ -160,8 +167,8 @@ const DepartmentManagement = () => {
     try {
       const [deptRes, hodRes, counsellorRes, memberRes] = await Promise.all([
         departmentsAPI.getAll(),
-        usersAPI.getAll({ role: 'HOD', limit: 500 }),
-        usersAPI.getAll({ role: 'COUNSELLOR', limit: 500 }),
+        usersAPI.getAll({ role: HOD_LIKE_ROLES.join(','), limit: 500 }),
+        usersAPI.getAll({ role: COUNSELLOR_LIKE_ROLES.join(','), limit: 500 }),
         departmentMembersAPI.getAll(),
       ]);
       setDepartments(deptRes.data.data);
@@ -201,6 +208,9 @@ const DepartmentManagement = () => {
     setForm(emptyForm);
     setSelectedHodIds([]);
     setSelectedCounsellorIds([]);
+    setNewHodForm(null);
+    setLogoData(undefined);
+    setLogoPreview('');
     setEditingDept(null);
     setShowForm(true);
   };
@@ -210,6 +220,9 @@ const DepartmentManagement = () => {
     const { hods: deptHods, counsellors: deptCounsellors } = membersOf(dept._id);
     setSelectedHodIds(deptHods.map((h) => h._id));
     setSelectedCounsellorIds(deptCounsellors.map((c) => c._id));
+    setNewHodForm(null);
+    setLogoData(undefined);
+    setLogoPreview(dept.logo || '');
     setEditingDept(dept);
     setShowForm(true);
   };
@@ -218,16 +231,61 @@ const DepartmentManagement = () => {
     setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   };
 
+  const handleLogoChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Please choose an image file'); return; }
+    if (file.size > MAX_FILE_BYTES) { toast.error('Image must be smaller than 5MB'); return; }
+    try {
+      const dataUrl = await resizeImage(file);
+      setLogoData(dataUrl);
+      setLogoPreview(dataUrl);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const removeLogo = () => {
+    setLogoData(null);
+    setLogoPreview('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (newHodForm && (!newHodForm.name.trim() || !newHodForm.email.trim() || !newHodForm.password.trim())) {
+      toast.error('Fill in the new HOD\'s name, email and password, or cancel that section');
+      return;
+    }
+    if (newHodForm && newHodForm.password.trim().length < 6) {
+      toast.error('The new HOD\'s password must be at least 6 characters');
+      return;
+    }
+
     setSaving(true);
     try {
+      const payload = { ...form };
+      if (logoData !== undefined) payload.logo = logoData;
+
       let deptId = editingDept?._id;
       if (editingDept) {
-        await departmentsAPI.update(editingDept._id, form);
+        await departmentsAPI.update(editingDept._id, payload);
       } else {
-        const res = await departmentsAPI.create(form);
+        const res = await departmentsAPI.create(payload);
         deptId = res.data.data._id;
+      }
+
+      // A brand-new HOD account, created and mapped to this department in one step.
+      if (newHodForm) {
+        await usersAPI.create({
+          name: newHodForm.name.trim(),
+          email: newHodForm.email.trim(),
+          password: newHodForm.password,
+          employeeId: newHodForm.employeeId.trim() || undefined,
+          role: 'HOD',
+          departmentId: deptId,
+        });
       }
 
       const { hods: prevHods, counsellors: prevCounsellors } = editingDept
@@ -380,8 +438,8 @@ const DepartmentManagement = () => {
             const teamGroups = teamGroupsOf(dept._id);
             const isExpanded = expandedIds.has(dept._id) || !isSuperAdmin;
 
-            const hodPeople = deptHods.map((h) => ({ _id: h._id, name: h.name, designation: 'Head of Department', phone: h.phone, email: h.email }));
-            const counsellorPeople = deptCounsellors.map((c) => ({ _id: c._id, name: c.name, designation: 'Counsellor', phone: c.phone, email: c.email }));
+            const hodPeople = deptHods.map((h) => ({ _id: h._id, name: h.name, designation: ROLE_LABELS[h.role] || 'Head of Department', phone: h.phone, email: h.email }));
+            const counsellorPeople = deptCounsellors.map((c) => ({ _id: c._id, name: c.name, designation: ROLE_LABELS[c.role] || 'Counsellor', phone: c.phone, email: c.email }));
 
             return (
               <div key={dept._id} className="card overflow-hidden">
@@ -398,8 +456,14 @@ const DepartmentManagement = () => {
                         {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </span>
                     )}
-                    <div className="p-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg mt-0.5 flex-shrink-0">
-                      <Building2 className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                    <div className="w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center">
+                      {dept.logo
+                        ? <img src={dept.logo} alt="" className="w-full h-full object-contain p-1" />
+                        : (
+                          <div className="w-full h-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center">
+                            <Building2 className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+                          </div>
+                        )}
                     </div>
                     <div className="min-w-0">
                       <h3 className="text-lg font-bold text-gray-900 dark:text-white">{dept.name}</h3>
@@ -484,6 +548,27 @@ const DepartmentManagement = () => {
             </div>
             <form id="deptForm" onSubmit={handleSubmit} className="overflow-y-auto flex-1 p-5 space-y-4">
               <div>
+                <label className="label">Department Logo</label>
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-primary-50 dark:bg-primary-900/30 border border-gray-200 dark:border-gray-700 flex items-center justify-center flex-shrink-0">
+                    {logoPreview
+                      ? <img src={logoPreview} alt="" className="w-full h-full object-contain" />
+                      : <Building2 className="w-6 h-6 text-primary-300 dark:text-primary-700" />}
+                  </div>
+                  <div className="flex gap-2">
+                    <label className="btn-secondary cursor-pointer text-sm">
+                      <Camera className="w-4 h-4" />{logoPreview ? 'Change' : 'Upload'}
+                      <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                    </label>
+                    {logoPreview && (
+                      <button type="button" onClick={removeLogo} className="btn-secondary text-sm text-red-500 hover:text-red-600">
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div>
                 <label className="label">Department Name <span className="text-red-500">*</span></label>
                 <input type="text" className="input-field" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required placeholder="e.g. North, South..." />
               </div>
@@ -493,7 +578,47 @@ const DepartmentManagement = () => {
               </div>
 
               <div>
-                <label className="label !mb-2">HODs in this department</label>
+                <div className="flex items-center justify-between !mb-2">
+                  <label className="label !mb-0">HODs in this department</label>
+                  {!newHodForm && (
+                    <button
+                      type="button"
+                      onClick={() => setNewHodForm(emptyNewHod)}
+                      className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />Create New HOD
+                    </button>
+                  )}
+                </div>
+
+                {newHodForm && (
+                  <div className="border border-primary-200 dark:border-primary-800 bg-primary-50/50 dark:bg-primary-900/10 rounded-lg p-3 mb-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-primary-700 dark:text-primary-400">New HOD account</p>
+                      <button type="button" onClick={() => setNewHodForm(null)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        Cancel
+                      </button>
+                    </div>
+                    <input
+                      type="text" className="input-field text-sm" placeholder="Full name"
+                      value={newHodForm.name} onChange={(e) => setNewHodForm((f) => ({ ...f, name: e.target.value }))}
+                    />
+                    <input
+                      type="email" className="input-field text-sm" placeholder="Email address"
+                      value={newHodForm.email} onChange={(e) => setNewHodForm((f) => ({ ...f, email: e.target.value }))}
+                    />
+                    <input
+                      type="password" className="input-field text-sm" placeholder="Password (min 6 characters)"
+                      value={newHodForm.password} onChange={(e) => setNewHodForm((f) => ({ ...f, password: e.target.value }))}
+                    />
+                    <input
+                      type="text" className="input-field text-sm" placeholder="Employee ID (optional)"
+                      value={newHodForm.employeeId} onChange={(e) => setNewHodForm((f) => ({ ...f, employeeId: e.target.value }))}
+                    />
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">This account is created and mapped to this department when you save.</p>
+                  </div>
+                )}
+
                 {hods.length === 0 ? (
                   <p className="text-xs text-gray-400">No HOD users yet.</p>
                 ) : (
@@ -506,6 +631,9 @@ const DepartmentManagement = () => {
                           onChange={() => toggleId(selectedHodIds, setSelectedHodIds, h._id)}
                         />
                         <span className="truncate">{h.name}</span>
+                        {h.role === 'ASSOCIATE_HOD' && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex-shrink-0">Associate</span>
+                        )}
                         {h.departmentId && h.departmentId._id !== editingDept?._id && (
                           <span className="text-xs text-gray-400 ml-auto flex-shrink-0">currently: {h.departmentId.name}</span>
                         )}
@@ -529,6 +657,9 @@ const DepartmentManagement = () => {
                           onChange={() => toggleId(selectedCounsellorIds, setSelectedCounsellorIds, c._id)}
                         />
                         <span className="truncate">{c.name}</span>
+                        {c.role === 'ONSHORE_COUNSELLOR' && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex-shrink-0">Onshore</span>
+                        )}
                         {c.departmentId && c.departmentId._id !== editingDept?._id && (
                           <span className="text-xs text-gray-400 ml-auto flex-shrink-0">currently: {c.departmentId.name}</span>
                         )}

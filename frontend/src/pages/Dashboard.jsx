@@ -11,7 +11,7 @@ import { reportsAPI } from '../api/reports';
 import { targetsAPI } from '../api/targets';
 import { usersAPI } from '../api/users';
 import { departmentsAPI } from '../api/departments';
-import { PERIODS } from '../utils/constants';
+import { PERIODS, COUNSELLOR_LIKE_ROLES, REPORT_SUBMITTER_ROLES } from '../utils/constants';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -22,7 +22,10 @@ const Dashboard = () => {
   const [period, setPeriod]             = useState('monthly');
   const [loading, setLoading]           = useState(true);
   // Super Admin-only org-wide counts
-  const [orgCounts, setOrgCounts]       = useState({ users: 0, departments: 0 });
+  const [orgCounts, setOrgCounts]       = useState({ users: 0 });
+  // All departments (with logos) — used for the "Active Departments" count and to show each
+  // department's logo next to its country in the Profile by Country table below.
+  const [departments, setDepartments]   = useState([]);
   // Counsellor-only monthly target state
   const [countries, setCountries]       = useState([]);
   const [todayReport, setTodayReport]   = useState(null);
@@ -35,7 +38,7 @@ const Dashboard = () => {
         const [analyticsRes, summaryRes, reportsRes] = await Promise.all([
           reportsAPI.getAnalytics({ period }),
           reportsAPI.getSummary({ period }),
-          user.role === 'COUNSELLOR'
+          COUNSELLOR_LIKE_ROLES.includes(user.role)
             ? reportsAPI.getMy({ period, limit: 8 })
             : reportsAPI.getAll({ period, limit: 8 }),
         ]);
@@ -51,19 +54,23 @@ const Dashboard = () => {
     fetchData();
   }, [period, user.role]);
 
-  // Org-wide counts for Super Admin only
+  // Departments (incl. logos) — fetched for every role so Profile by Country can show each
+  // country's department logo, not just for Super Admin's own counts.
+  useEffect(() => {
+    departmentsAPI.getAll().then((res) => setDepartments(res.data.data || [])).catch(() => {});
+  }, []);
+
+  // Org-wide user count for Super Admin only
   useEffect(() => {
     if (user.role !== 'SUPER_ADMIN') return;
-    Promise.all([usersAPI.getAll({ limit: 1 }), departmentsAPI.getAll()])
-      .then(([usersRes, deptRes]) => {
-        setOrgCounts({ users: usersRes.data.pagination?.total || 0, departments: deptRes.data.data?.length || 0 });
-      })
+    usersAPI.getAll({ limit: 1 })
+      .then((res) => setOrgCounts({ users: res.data.pagination?.total || 0 }))
       .catch(() => {});
   }, [user.role]);
 
-  // Fetch this month's targets + today's report for Counsellor only
+  // Fetch this month's targets + today's report for anyone who submits their own daily report
   useEffect(() => {
-    if (user.role !== 'COUNSELLOR') return;
+    if (!REPORT_SUBMITTER_ROLES.includes(user.role)) return;
     const now = new Date();
     setTargetLoading(true);
     Promise.all([
@@ -104,7 +111,7 @@ const Dashboard = () => {
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
           </select>
-          {user?.role === 'COUNSELLOR' && (
+          {REPORT_SUBMITTER_ROLES.includes(user?.role) && (
             <button onClick={() => navigate('/submit-report')} className="btn-primary">
               <Plus className="w-4 h-4" />
               Submit Report
@@ -113,8 +120,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* ── Monthly Target Progress (Counsellor only) ── */}
-      {user?.role === 'COUNSELLOR' && (
+      {/* ── Monthly Target Progress (anyone who submits their own daily report) ── */}
+      {REPORT_SUBMITTER_ROLES.includes(user?.role) && (
         <MonthlyTargetCard
           countries={countries}
           todayReport={todayReport}
@@ -128,7 +135,7 @@ const Dashboard = () => {
         {user?.role === 'SUPER_ADMIN' && (
           <>
             <KPICard title="Total Users" value={orgCounts.users} icon={Users} color="blue" />
-            <KPICard title="Active Departments" value={orgCounts.departments} icon={MapPin} color="yellow" />
+            <KPICard title="Active Departments" value={departments.length} icon={MapPin} color="yellow" />
           </>
         )}
         <KPICard title="Total Reports" value={analyticsSummary.totalReports} icon={FileText} color="blue" subtitle={`For selected period`} />
@@ -156,10 +163,10 @@ const Dashboard = () => {
       )}
 
       {/* KPI rollup (per-country, communication, follow-up) */}
-      {!loading && <TrackerSummary summary={summary} />}
+      {!loading && <TrackerSummary summary={summary} departments={departments} />}
 
       {/* Recent Reports */}
-      <RecentReports reports={recentReports} showUser={user?.role !== 'COUNSELLOR'} />
+      <RecentReports reports={recentReports} showUser={!COUNSELLOR_LIKE_ROLES.includes(user?.role)} />
     </div>
   );
 };

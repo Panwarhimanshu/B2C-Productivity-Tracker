@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Edit2, Save, X } from 'lucide-react';
 import { targetsAPI } from '../../api/targets';
+import { departmentsAPI } from '../../api/departments';
 import { COUNTRIES } from '../../constants/tracker';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../../utils/helpers';
+import { useAuth } from '../../context/AuthContext';
 
 const TARGET_FIELDS = [
   { key: 'coachingTarget', achievedKey: 'coachingAchieved', label: 'Coaching' },
@@ -17,9 +19,12 @@ const now = new Date();
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const TargetManagement = () => {
+  const { user } = useAuth();
+  const isHOD = user?.role === 'HOD';
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [country, setCountry] = useState(COUNTRIES[0]);
+  const [country, setCountry] = useState('');
+  const [departments, setDepartments] = useState(null); // null = still loading
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -27,6 +32,31 @@ const TargetManagement = () => {
   const [saving, setSaving] = useState(false);
 
   const years = Array.from({ length: 3 }, (_, i) => now.getFullYear() - 1 + i);
+
+  // Only departments actually created (Department Management) are offered here — no point
+  // setting a target for a country nobody has been mapped to yet. Departments are named after
+  // countries by convention, so this is the overlap between real departments and COUNTRIES,
+  // kept in COUNTRIES' order and de-duplicated (case-insensitive match). HOD is further locked
+  // to their own department only — the backend enforces this too, this is just so the dropdown
+  // doesn't offer choices they can't actually use.
+  const availableCountries = useMemo(() => {
+    if (!departments) return [];
+    const scoped = isHOD ? departments.filter((d) => d._id === user?.departmentId) : departments;
+    const deptNames = new Set(scoped.map((d) => d.name.toLowerCase()));
+    return COUNTRIES.filter((c) => deptNames.has(c.toLowerCase()));
+  }, [departments, isHOD, user?.departmentId]);
+
+  useEffect(() => {
+    departmentsAPI.getAll().then((res) => setDepartments(res.data.data)).catch(() => setDepartments([]));
+  }, []);
+
+  // Once departments load (or change), make sure the selected country is still valid.
+  useEffect(() => {
+    if (!departments) return;
+    if (!availableCountries.includes(country)) {
+      setCountry(availableCountries[0] || '');
+    }
+  }, [departments, availableCountries]);
 
   const fetchTable = async () => {
     setLoading(true);
@@ -40,7 +70,11 @@ const TargetManagement = () => {
     }
   };
 
-  useEffect(() => { fetchTable(); }, [year, month, country]);
+  useEffect(() => {
+    if (departments === null) return; // wait for departments to resolve first
+    if (!country) { setRows([]); setLoading(false); return; }
+    fetchTable();
+  }, [year, month, country, departments]);
 
   const openEdit = (row) => {
     const t = row.target;
@@ -76,11 +110,18 @@ const TargetManagement = () => {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Monthly Targets</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Coaching / Admission / Revenue targets, per country · achieved is month-to-date from daily reports</p>
+          <p className="text-xs text-gray-400 mt-0.5">Coaching / Admission targets, per country · achieved is month-to-date from daily reports</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <select className="input-field w-auto text-sm" value={country} onChange={(e) => setCountry(e.target.value)}>
-            {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          <select
+            className="input-field w-auto text-sm"
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            disabled={availableCountries.length === 0}
+          >
+            {availableCountries.length === 0
+              ? <option value="">No departments yet</option>
+              : availableCountries.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <select className="input-field w-auto text-sm" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
             {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
@@ -94,6 +135,8 @@ const TargetManagement = () => {
       <div className="card overflow-hidden">
         {loading ? (
           <LoadingSpinner className="py-16" />
+        ) : availableCountries.length === 0 ? (
+          <p className="text-center text-gray-500 py-12">No departments created yet — add one in Department Management first.</p>
         ) : rows.length === 0 ? (
           <p className="text-center text-gray-500 py-12">No Counsellors found</p>
         ) : (
