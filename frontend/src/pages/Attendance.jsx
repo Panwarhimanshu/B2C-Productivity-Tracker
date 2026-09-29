@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Clock, UserX } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Clock, UserX, Search } from 'lucide-react';
 import { attendanceAPI } from '../api/attendance';
 import { useAuth } from '../context/AuthContext';
 import { HOD_LIKE_ROLES } from '../utils/constants';
@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 
 const now = new Date();
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const todayISO = now.toISOString().slice(0, 10);
 
 // Zoho's own Status values aren't a fixed set (Present/Absent plus whatever leave/holiday/shift
 // types the org has configured) — style the common ones, fall back to a neutral badge for
@@ -58,6 +59,42 @@ const DailyTable = ({ rows }) => (
   </div>
 );
 
+// One row per employee for a single chosen date — the day-wise, employee-filterable view.
+const DayWiseTable = ({ entries }) => (
+  <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+    <table className="w-full text-xs">
+      <thead className="bg-gray-50 dark:bg-gray-700/50">
+        <tr>
+          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Employee</th>
+          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Department</th>
+          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
+          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">First In</th>
+          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Last Out</th>
+          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Working Hours</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+        {entries.map(({ member, row }) => (
+          <tr key={member._id}>
+            <td className="px-3 py-2 text-gray-800 dark:text-gray-200 font-medium">{member.name}</td>
+            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{member.department || '—'}</td>
+            <td className="px-3 py-2">
+              {row ? (
+                <span className={`badge ${styleFor(row.status)}`}>{row.status}</span>
+              ) : (
+                <span className="text-gray-400">Not found in Zoho People</span>
+              )}
+            </td>
+            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{row?.firstIn || '—'}</td>
+            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{row?.lastOut || '—'}</td>
+            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{row?.workingHours || '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
 const SummaryTiles = ({ rows }) => {
   const s = summarize(rows);
   const statuses = Object.keys(s).sort((a, b) => (a === 'Present' ? -1 : b === 'Present' ? 1 : 0));
@@ -100,6 +137,9 @@ const Attendance = () => {
   // Team view state
   const [members, setMembers] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
+  const [viewMode, setViewMode] = useState('monthly'); // 'monthly' | 'daily'
+  const [selectedDate, setSelectedDate] = useState(todayISO);
+  const [employeeSearch, setEmployeeSearch] = useState('');
 
   const years = Array.from({ length: 3 }, (_, i) => now.getFullYear() - 1 + i);
 
@@ -114,6 +154,25 @@ const Attendance = () => {
     fetch.catch((err) => toast.error(getErrorMessage(err))).finally(() => setLoading(false));
   }, [month, year, isTeamView]);
 
+  // Changing the picked day may land in a different month — keep the underlying monthly
+  // fetch (which the day-wise view is sliced from) in sync with it.
+  const handleDateChange = (value) => {
+    setSelectedDate(value);
+    const [y, m] = value.split('-').map(Number);
+    if (y !== year) setYear(y);
+    if (m !== month) setMonth(m);
+  };
+
+  const dayWiseEntries = useMemo(() => {
+    const q = employeeSearch.trim().toLowerCase();
+    return members
+      .filter(({ user: m }) => !q || m.name.toLowerCase().includes(q))
+      .map(({ user: m, rows, linked: memberLinked }) => ({
+        member: m,
+        row: memberLinked ? rows.find((r) => r.date === selectedDate) || null : null,
+      }));
+  }, [members, employeeSearch, selectedDate]);
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
@@ -123,15 +182,57 @@ const Attendance = () => {
             {isTeamView ? "Your team's attendance, synced from Zoho People." : 'Your attendance, synced from Zoho People.'}
           </p>
         </div>
-        <div className="flex gap-2">
-          <select className="input-field w-auto text-sm" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-            {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-          </select>
-          <select className="input-field w-auto text-sm" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
+        <div className="flex flex-wrap gap-2 items-center">
+          {isTeamView && (
+            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
+              {['monthly', 'daily'].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-3 py-1.5 capitalize transition-colors ${
+                    viewMode === mode
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          )}
+          {isTeamView && viewMode === 'daily' ? (
+            <input
+              type="date"
+              className="input-field w-auto text-sm"
+              value={selectedDate}
+              max={todayISO}
+              onChange={(e) => handleDateChange(e.target.value)}
+            />
+          ) : (
+            <>
+              <select className="input-field w-auto text-sm" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+                {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+              </select>
+              <select className="input-field w-auto text-sm" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </>
+          )}
         </div>
       </div>
+
+      {isTeamView && viewMode === 'daily' && !loading && (
+        <div className="relative max-w-xs">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Filter by employee name…"
+            className="input-field pl-9 text-sm"
+            value={employeeSearch}
+            onChange={(e) => setEmployeeSearch(e.target.value)}
+          />
+        </div>
+      )}
 
       {loading ? (
         <LoadingSpinner className="py-16" />
@@ -141,6 +242,15 @@ const Attendance = () => {
             <UserX className="w-10 h-10 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500">No active members found for this department.</p>
           </div>
+        ) : viewMode === 'daily' ? (
+          dayWiseEntries.length === 0 ? (
+            <div className="card py-16 text-center">
+              <UserX className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">No employees match "{employeeSearch}".</p>
+            </div>
+          ) : (
+            <DayWiseTable entries={dayWiseEntries} />
+          )
         ) : (
           <div className="space-y-3">
             {members.map(({ user: m, rows, linked: memberLinked }) => {
