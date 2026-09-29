@@ -35,6 +35,13 @@ const FOLLOW_UP_TASKS = [
   'Fees Receipt & PAL Follow-up',
   'Refund Application',
   'Deferral Application',
+  'B2B/B2C PR Counselling',
+  'Walk-in Inquiries',
+  'Case Discussion',
+  'Calling on Leads',
+  'CRM Update',
+  'Demo Taken',
+  'Training Session in MILLT',
 ];
 
 // Resolve which COUNTRIES a department maps to, by exact (case-insensitive) name match.

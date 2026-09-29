@@ -33,6 +33,13 @@ export const FOLLOW_UP_TASKS = [
   'Fees Receipt & PAL Follow-up',
   'Refund Application',
   'Deferral Application',
+  'B2B/B2C PR Counselling',
+  'Walk-in Inquiries',
+  'Case Discussion',
+  'Calling on Leads',
+  'CRM Update',
+  'Demo Taken',
+  'Training Session in MILLT',
 ];
 
 export const num = (v) => {
