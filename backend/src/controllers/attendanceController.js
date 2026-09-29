@@ -1,82 +1,89 @@
 const User = require('../models/User');
-const AttendanceEvent = require('../models/AttendanceEvent');
-const { groupByDay, istPartsToUtcDate } = require('../config/attendance');
 const { isHodLike } = require('../config/roles');
+const { fetchAttendanceForEmail, fetchAttendanceForAll } = require('../config/zoho');
 
-// Number of days in a given (1-indexed) month/year — Date.UTC avoids any dependence on the
-// server process's own timezone.
 const daysInMonth = (year, month) => new Date(Date.UTC(year, month, 0)).getUTCDate();
 
-// [start of month, start of next month) in IST, expressed as UTC instants for the query.
-const monthRange = (year, month) => ({
-  start: istPartsToUtcDate(year, month, 1),
-  end: istPartsToUtcDate(year, month + 1, 1), // exclusive; Date.UTC handles month/year rollover
-});
+const pad = (n) => String(n).padStart(2, '0');
 
-// Build { date, status, firstIn, lastOut, punchCount } rows for one user over a month,
-// filling in "Absent" for any day with no punch events at all. Day keys are plain
-// YYYY-MM-DD strings from the requested year/month — never round-tripped through a Date's
-// own timezone, which is what previously mislabeled every day by one.
-const buildMonthRows = async (matrixUserId, year, month) => {
-  if (!matrixUserId) return [];
-  const { start, end } = monthRange(year, month);
-  const events = await AttendanceEvent.find({
-    matrixUserId, occurredAt: { $gte: start, $lt: end },
-  }).select('occurredAt').lean();
-
-  const byDay = groupByDay(events);
+// Zoho date params are dd-MM-yyyy; its attendanceDetails keys come back as yyyy-MM-dd
+// regardless, which is what we build our own row keys as below.
+const monthDateRange = (year, month) => {
   const total = daysInMonth(year, month);
+  return { sdate: `01-${pad(month)}-${year}`, edate: `${pad(total)}-${pad(month)}-${year}`, total };
+};
+
+// Fill in every day of the month, even ones Zoho didn't return a record for.
+const buildRows = (attendanceDetails, year, month, total) => {
   const rows = [];
   for (let d = 1; d <= total; d++) {
-    const key = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const day = byDay[key] || { status: 'Absent', firstIn: null, lastOut: null, punchCount: 0 };
-    rows.push({ date: key, ...day });
+    const key = `${year}-${pad(month)}-${pad(d)}`;
+    const day = attendanceDetails?.[key];
+    rows.push({
+      date: key,
+      status: day?.Status || 'No Data',
+      firstIn: day && day.FirstIn !== '-' ? day.FirstIn : null,
+      lastOut: day && day.LastOut !== '-' ? day.LastOut : null,
+      workingHours: day?.WorkingHours || '00:00',
+    });
   }
   return rows;
 };
 
-// Any authenticated user: their own month of attendance. Needs matrixUserId set on their
-// profile (by Super Admin, in User Management) — without it there's nothing to show yet.
+// Any authenticated user: their own month of attendance, matched to Zoho People by email.
 const getMyAttendance = async (req, res, next) => {
   try {
     const now = new Date();
     const year = Number(req.query.year) || now.getFullYear();
     const month = Number(req.query.month) || now.getMonth() + 1;
+    const { sdate, edate, total } = monthDateRange(year, month);
 
-    if (!req.user.matrixUserId) {
+    const attendanceDetails = await fetchAttendanceForEmail(req.user.email, sdate, edate);
+    if (!attendanceDetails) {
       return res.json({ success: true, data: { rows: [], linked: false, year, month } });
     }
-    const rows = await buildMonthRows(req.user.matrixUserId, year, month);
-    res.json({ success: true, data: { rows, linked: true, year, month } });
+    res.json({
+      success: true,
+      data: { rows: buildRows(attendanceDetails, year, month, total), linked: true, year, month },
+    });
   } catch (error) {
     next(error);
   }
 };
 
 // HOD/Associate HOD (own department) or Super Admin (everyone, or one ?departmentId): every
-// linked team member's month of attendance in one call.
+// department member's month of attendance in one call, matched to Zoho People by email.
 const getTeamAttendance = async (req, res, next) => {
   try {
     const now = new Date();
     const year = Number(req.query.year) || now.getFullYear();
     const month = Number(req.query.month) || now.getMonth() + 1;
+    const { sdate, edate, total } = monthDateRange(year, month);
 
-    const userFilter = { isActive: true, matrixUserId: { $exists: true, $ne: null } };
+    const userFilter = { isActive: true };
     if (isHodLike(req.user.role)) {
       userFilter.departmentId = req.user.departmentId;
     } else if (req.query.departmentId) {
       userFilter.departmentId = req.query.departmentId;
     }
-
-    const users = await User.find(userFilter).select('name employeeId matrixUserId role departmentId')
+    const users = await User.find(userFilter).select('name employeeId email role departmentId')
       .populate('departmentId', 'name');
 
-    const data = await Promise.all(users.map(async (u) => ({
-      user: { _id: u._id, name: u.name, employeeId: u.employeeId, role: u.role, department: u.departmentId?.name || null },
-      rows: await buildMonthRows(u.matrixUserId, year, month),
-    })));
+    const byEmail = await fetchAttendanceForAll(sdate, edate);
 
-    res.json({ success: true, data: { members: data, year, month } });
+    const members = users.map((u) => {
+      const details = byEmail.get(u.email.toLowerCase());
+      return {
+        user: {
+          _id: u._id, name: u.name, employeeId: u.employeeId, role: u.role,
+          department: u.departmentId?.name || null,
+        },
+        linked: !!details,
+        rows: details ? buildRows(details, year, month, total) : [],
+      };
+    });
+
+    res.json({ success: true, data: { members, year, month } });
   } catch (error) {
     next(error);
   }
