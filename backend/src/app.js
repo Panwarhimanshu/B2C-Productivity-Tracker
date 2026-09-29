@@ -11,6 +11,8 @@ const departmentMemberRoutes = require('./routes/departmentMembers');
 const reportRoutes = require('./routes/reports');
 const targetRoutes = require('./routes/targets');
 const notificationRoutes = require('./routes/notifications');
+const attendanceRoutes = require('./routes/attendance');
+const matrixRoutes = require('./routes/matrix');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -59,6 +61,10 @@ app.use('/api/department-members', departmentMemberRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/targets', targetRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/attendance', attendanceRoutes);
+// Device-facing, not app-facing — the Matrix COSEC punch machine is configured (on its own
+// local admin page) to call these directly; see matrixController.js for the auth model.
+app.use('/api/matrix', matrixRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 

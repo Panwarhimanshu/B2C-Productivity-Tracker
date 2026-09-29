@@ -49,7 +49,7 @@ const ImportResultSummary = ({ result, counts }) => (
   </div>
 );
 
-const emptyForm = { name: '', email: '', password: '', role: 'COUNSELLOR', designation: '', employeeId: '', departmentId: '', joiningDate: '' };
+const emptyForm = { name: '', email: '', password: '', role: 'COUNSELLOR', designation: '', employeeId: '', matrixUserId: '', departmentId: '', joiningDate: '' };
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -91,7 +91,7 @@ const UserManagement = () => {
     setForm({
       name: user.name, email: user.email, password: '', role: user.role,
       designation: user.designation || '',
-      employeeId: user.employeeId || '', departmentId: user.departmentId?._id || '',
+      employeeId: user.employeeId || '', matrixUserId: user.matrixUserId || '', departmentId: user.departmentId?._id || '',
       joiningDate: user.joiningDate ? user.joiningDate.split('T')[0] : '',
     });
     setEditingUser(user);
@@ -299,6 +299,7 @@ const UserManagement = () => {
                 { label: 'Email', key: 'email', type: 'email', required: true },
                 { label: editingUser ? 'New Password (leave blank to keep)' : 'Password', key: 'password', type: 'password', required: !editingUser },
                 { label: 'Employee ID', key: 'employeeId', type: 'text' },
+                { label: 'Matrix User ID (attendance device)', key: 'matrixUserId', type: 'text' },
                 { label: 'Joining Date', key: 'joiningDate', type: 'date' },
               ].map(({ label, key, type, required }) => (
                 <div key={key}>

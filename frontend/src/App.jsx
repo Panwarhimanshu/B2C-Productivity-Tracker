@@ -7,6 +7,7 @@ import Layout from './components/common/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
+import Attendance from './pages/Attendance';
 import SubmitReport from './pages/rm/SubmitReport';
 import MyReports from './pages/rm/MyReports';
 import Performance from './pages/rm/Performance';
@@ -64,6 +65,7 @@ const App = () => {
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/attendance" element={<Attendance />} />
 
           {/* Report-submitting roles: Counsellor, Onshore Counsellor, Associate HOD */}
           <Route

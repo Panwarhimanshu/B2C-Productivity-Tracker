@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Users, MapPin,
-  ClipboardList, TrendingUp, Building2, ChevronLeft, ChevronRight, Target, History,
+  ClipboardList, TrendingUp, Building2, ChevronLeft, ChevronRight, Target, History, Clock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ROLE_LABELS } from '../../utils/constants';
@@ -10,6 +10,7 @@ import { classNames } from '../../utils/helpers';
 const navByRole = {
   COUNSELLOR: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/attendance', icon: Clock, label: 'Attendance' },
     { to: '/submit-report', icon: FileText, label: 'Submit Report' },
     { to: '/my-reports', icon: ClipboardList, label: 'My Reports' },
     { to: '/my-performance', icon: TrendingUp, label: 'Performance' },
@@ -18,6 +19,7 @@ const navByRole = {
   ],
   HOD: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/attendance', icon: Clock, label: 'Attendance' },
     { to: '/all-reports', icon: ClipboardList, label: 'All Reports' },
     { to: '/report-logs', icon: History, label: 'Report Logs' },
     { to: '/department-management', icon: MapPin, label: 'My Department' },
@@ -26,6 +28,7 @@ const navByRole = {
   ],
   SUPER_ADMIN: [
     { to: '/dashboard', icon: Building2, label: 'Organisation Dashboard' },
+    { to: '/attendance', icon: Clock, label: 'Attendance' },
     { to: '/all-reports', icon: ClipboardList, label: 'All Reports' },
     { to: '/report-logs', icon: History, label: 'Report Logs' },
     { to: '/user-management', icon: Users, label: 'User Management' },
@@ -40,6 +43,7 @@ navByRole.ONSHORE_COUNSELLOR = navByRole.COUNSELLOR;
 // department-wide oversight — minus Monthly Targets (HOD/Super Admin only).
 navByRole.ASSOCIATE_HOD = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/attendance', icon: Clock, label: 'Attendance' },
   { to: '/submit-report', icon: FileText, label: 'Submit Report' },
   { to: '/my-reports', icon: ClipboardList, label: 'My Reports' },
   { to: '/my-performance', icon: TrendingUp, label: 'Performance' },

@@ -58,9 +58,12 @@ const getUserById = async (req, res, next) => {
 
 const createUser = async (req, res, next) => {
   try {
-    const { name, email, password, role, designation, employeeId, departmentId, joiningDate } = req.body;
+    const { name, email, password, role, designation, employeeId, matrixUserId, departmentId, joiningDate } = req.body;
 
-    const user = new User({ name, email, password, role, designation, employeeId, departmentId, joiningDate });
+    const user = new User({
+      name, email, password, role, designation, employeeId, departmentId, joiningDate,
+      matrixUserId: matrixUserId || undefined, // '' would break the sparse unique index otherwise
+    });
     await user.save();
 
     await AuditLog.create({
@@ -80,13 +83,16 @@ const createUser = async (req, res, next) => {
 
 const updateUser = async (req, res, next) => {
   try {
-    const { name, email, role, designation, employeeId, departmentId, joiningDate } = req.body;
+    const { name, email, role, designation, employeeId, matrixUserId, departmentId, joiningDate } = req.body;
 
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     const before = user.toJSON();
-    const updates = { name, email, role, designation, employeeId, departmentId, joiningDate };
+    const updates = {
+      name, email, role, designation, employeeId, departmentId, joiningDate,
+      matrixUserId: matrixUserId || undefined,
+    };
 
     Object.assign(user, updates);
 

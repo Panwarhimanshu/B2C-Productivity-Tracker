@@ -14,6 +14,10 @@ const userSchema = new mongoose.Schema(
     },
     designation: { type: String, trim: true, default: '' },
     employeeId: { type: String, unique: true, sparse: true, trim: true },
+    // The "user-id" this person is enrolled under on the Matrix COSEC attendance device —
+    // separate from employeeId since the device's own ID may not match this app's. Left
+    // unset (not empty string) so the sparse unique index only applies once it's actually set.
+    matrixUserId: { type: String, unique: true, sparse: true, trim: true },
     avatar:          { type: String, default: null },
     avatarPublicId:  { type: String, default: null, select: false },
     departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null },
