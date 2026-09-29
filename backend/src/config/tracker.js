@@ -56,7 +56,6 @@ const computeReportTotals = (tasks) => {
   const t = tasks || {};
   const profile = Array.isArray(t.profile) ? t.profile : [];
   const followUps = Array.isArray(t.followUpTasks) ? t.followUpTasks : [];
-  const extra = t.extraInitiatives || {};
 
   const profileTotals = {};
   PROFILE_NUMERIC_KEYS.forEach((k) => {
@@ -68,10 +67,6 @@ const computeReportTotals = (tasks) => {
   return {
     profile: profileTotals,
     followUp: { done: followUpDone },
-    leads: {
-      committed: num(extra.leadsCommitted),
-      generated: num(extra.leadsGenerated),
-    },
   };
 };
 

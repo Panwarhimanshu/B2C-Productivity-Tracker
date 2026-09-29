@@ -40,8 +40,6 @@ const TrackerForm = ({ value, onChange, readOnly = false, countryTargets = null 
     const followUpTasks = data.followUpTasks.map((row, i) => (i === idx ? { ...row, [key]: val } : row));
     emit({ ...data, followUpTasks });
   };
-  const updateExtra = (key, val) => emit({ ...data, extraInitiatives: { ...data.extraInitiatives, [key]: val } });
-
   const COL_GROUP = {
     coachingAchieved: 'blue',
     admissionAchieved: 'green',
@@ -210,45 +208,6 @@ const TrackerForm = ({ value, onChange, readOnly = false, countryTargets = null 
               })}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Section 3: Extra initiatives */}
-      <div className="card p-5">
-        <SectionTitle>Section 3 · Extra Initiatives</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 max-w-sm">
-          {[
-            { key: 'leadsCommitted', label: 'Leads Committed', color: 'blue' },
-            { key: 'leadsGenerated', label: 'Leads Generated', color: 'green' },
-          ].map((f) => (
-            <div key={f.key} className={`rounded-xl border p-4 flex flex-col gap-2 ${
-              f.color === 'blue'
-                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800'
-                : 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800'
-            }`}>
-              <p className={`text-[11px] font-semibold uppercase tracking-wide ${
-                f.color === 'blue' ? 'text-blue-500 dark:text-blue-400' : 'text-green-500 dark:text-green-400'
-              }`}>{f.label}</p>
-              {readOnly ? (
-                <p className={`text-3xl font-bold leading-none ${
-                  f.color === 'blue' ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'
-                }`}>{data.extraInitiatives?.[f.key] || '0'}</p>
-              ) : (
-                <input
-                  type="number"
-                  min={0}
-                  className={`w-full text-2xl font-bold bg-transparent border-0 border-b-2 focus:outline-none pb-0.5 transition-colors placeholder:text-gray-300 ${
-                    f.color === 'blue'
-                      ? 'text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 focus:border-blue-500'
-                      : 'text-green-600 dark:text-green-400 border-green-200 dark:border-green-700 focus:border-green-500'
-                  }`}
-                  value={data.extraInitiatives?.[f.key] ?? ''}
-                  onChange={(e) => updateExtra(f.key, e.target.value)}
-                  placeholder="0"
-                />
-              )}
-            </div>
-          ))}
         </div>
       </div>
 

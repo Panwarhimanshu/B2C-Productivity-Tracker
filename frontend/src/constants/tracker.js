@@ -51,7 +51,6 @@ export const emptyTracker = (countries = COUNTRIES) => ({
     return row;
   }),
   followUpTasks: FOLLOW_UP_TASKS.map((task) => ({ task, done: '', remarks: '' })),
-  extraInitiatives: { leadsCommitted: '', leadsGenerated: '' },
   summary: '',
 });
 
@@ -93,7 +92,6 @@ export const normalizeTracker = (tasks, countries = COUNTRIES) => {
       return stored ? { ...row, ...stored } : row;
     });
   }
-  if (tasks.extraInitiatives) base.extraInitiatives = { ...base.extraInitiatives, ...tasks.extraInitiatives };
   return base;
 };
 

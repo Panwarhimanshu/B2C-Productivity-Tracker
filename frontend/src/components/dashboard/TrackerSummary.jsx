@@ -24,7 +24,7 @@ const TargetBadge = ({ achieved, target }) => {
 
 const TrackerSummary = ({ summary, departments = [] }) => {
   if (!summary) return null;
-  const { kpiTotals = {}, kpiTargets = {}, perCountry = [], followUp = {}, leads = {}, targetMonth, targetYear } = summary;
+  const { kpiTotals = {}, kpiTargets = {}, perCountry = [], followUp = {}, targetMonth, targetYear } = summary;
   const monthLabel = targetMonth && targetYear
     ? new Date(targetYear, targetMonth - 1).toLocaleString('default', { month: 'long', year: 'numeric' })
     : null;
@@ -110,20 +110,14 @@ const TrackerSummary = ({ summary, departments = [] }) => {
         </div>
       </div>
 
-      {/* Follow-up & leads */}
+      {/* Follow-up */}
       <div className="card p-4">
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Follow-up &amp; Initiatives</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-lg">
-          {[
-            ['Tasks Done', followUp.done],
-            ['Leads Committed', leads.committed],
-            ['Leads Generated', leads.generated],
-          ].map(([label, val]) => (
-            <div key={label} className="rounded-lg bg-gray-50 dark:bg-gray-700/40 p-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-              <p className="text-base font-semibold text-gray-900 dark:text-white">{val ?? 0}</p>
-            </div>
-          ))}
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Follow-up</h3>
+        <div className="max-w-[160px]">
+          <div className="rounded-lg bg-gray-50 dark:bg-gray-700/40 p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Tasks Done</p>
+            <p className="text-base font-semibold text-gray-900 dark:text-white">{followUp.done ?? 0}</p>
+          </div>
         </div>
       </div>
     </div>

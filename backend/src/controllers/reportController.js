@@ -328,7 +328,6 @@ const getTrackerSummary = async (req, res, next) => {
     const kpiTotals = PROFILE_NUMERIC_KEYS.reduce((o, k) => ({ ...o, [k]: 0 }), {});
     const kpiTargets = { coachingTarget: 0, admissionTarget: 0 };
     const followUp = { done: 0 };
-    const leads = { committed: 0, generated: 0 };
 
     for (const r of reports) {
       const tasks = r.tasks || {};
@@ -345,8 +344,6 @@ const getTrackerSummary = async (req, res, next) => {
       });
       const totals = computeReportTotals(tasks);
       followUp.done += totals.followUp.done;
-      leads.committed += totals.leads.committed;
-      leads.generated += totals.leads.generated;
     }
 
     // This month's Coaching/Admission/Revenue targets, summed per country, so the caller can
@@ -379,7 +376,6 @@ const getTrackerSummary = async (req, res, next) => {
         targetMonth,
         targetYear,
         followUp,
-        leads,
         reportsCount: reports.length,
         rmCount: userIds.length,
         period,
