@@ -1,59 +1,95 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Clock, UserX, Search } from 'lucide-react';
+import {
+  Clock, UserX, Search, ChevronDown, CalendarDays, CalendarRange,
+  CheckCircle2, XCircle, CalendarOff, Umbrella, HelpCircle,
+} from 'lucide-react';
 import { attendanceAPI } from '../api/attendance';
 import { useAuth } from '../context/AuthContext';
 import { HOD_LIKE_ROLES } from '../utils/constants';
-import { getErrorMessage } from '../utils/helpers';
+import { classNames, getErrorMessage } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const now = new Date();
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const todayISO = now.toISOString().slice(0, 10);
 
 // Zoho's own Status values aren't a fixed set (Present/Absent plus whatever leave/holiday/shift
-// types the org has configured) — style the common ones, fall back to a neutral badge for
-// anything else so an unrecognized status still renders sensibly.
-const STATUS_STYLE = {
-  Present: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  Absent: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  Weekend: 'bg-gray-100 text-gray-500 dark:bg-gray-700/50 dark:text-gray-400',
-  Holiday: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  Leave: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  'No Data': 'bg-gray-100 text-gray-400 dark:bg-gray-700/50 dark:text-gray-500',
+// types the org has configured) — style + icon the common ones, fall back to a neutral badge
+// for anything else so an unrecognized status still renders sensibly.
+const STATUS_META = {
+  Present: { icon: CheckCircle2, badge: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', tile: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
+  Absent: { icon: XCircle, badge: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', tile: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400' },
+  Weekend: { icon: CalendarOff, badge: 'bg-gray-100 text-gray-500 dark:bg-gray-700/50 dark:text-gray-400', tile: 'bg-gray-100 text-gray-500 dark:bg-gray-700/50 dark:text-gray-400' },
+  Holiday: { icon: CalendarOff, badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', tile: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
+  Leave: { icon: Umbrella, badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', tile: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' },
+  'No Data': { icon: HelpCircle, badge: 'bg-gray-100 text-gray-400 dark:bg-gray-700/50 dark:text-gray-500', tile: 'bg-gray-100 text-gray-400 dark:bg-gray-700/50 dark:text-gray-500' },
 };
-const FALLBACK_STYLE = 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300';
-const styleFor = (status) => STATUS_STYLE[status] || FALLBACK_STYLE;
+const FALLBACK_META = { icon: HelpCircle, badge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300', tile: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' };
+const metaFor = (status) => STATUS_META[status] || FALLBACK_META;
 
 const summarize = (rows) => rows.reduce((acc, r) => {
   acc[r.status] = (acc[r.status] || 0) + 1;
   return acc;
 }, {});
 
+const sortStatuses = (keys) => keys.sort((a, b) => (a === 'Present' ? -1 : b === 'Present' ? 1 : a.localeCompare(b)));
+
+const weekdayOf = (dateStr) => WEEKDAYS[new Date(`${dateStr}T00:00:00`).getDay()];
+const isWeekendDate = (dateStr) => [0, 6].includes(new Date(`${dateStr}T00:00:00`).getDay());
+
+const Avatar = ({ name }) => (
+  <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+    {name?.charAt(0)?.toUpperCase() || '?'}
+  </div>
+);
+
+const StatusBadge = ({ status }) => {
+  const { icon: Icon, badge } = metaFor(status);
+  return (
+    <span className={`badge gap-1 ${badge}`}>
+      <Icon className="w-3 h-3" />
+      {status}
+    </span>
+  );
+};
+
 const DailyTable = ({ rows }) => (
   <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
     <table className="w-full text-xs">
-      <thead className="bg-gray-50 dark:bg-gray-700/50">
+      <thead className="bg-gray-50 dark:bg-gray-700/50 sticky top-0">
         <tr>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Date</th>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">First In</th>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Last Out</th>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Working Hours</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">Date</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">First In</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">Last Out</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">Working Hours</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-        {rows.map((r) => (
-          <tr key={r.date}>
-            <td className="px-3 py-2 text-gray-700 dark:text-gray-300">{r.date}</td>
-            <td className="px-3 py-2">
-              <span className={`badge ${styleFor(r.status)}`}>{r.status}</span>
-            </td>
-            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{r.firstIn || '—'}</td>
-            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{r.lastOut || '—'}</td>
-            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{r.workingHours}</td>
-          </tr>
-        ))}
+        {rows.map((r) => {
+          const isToday = r.date === todayISO;
+          return (
+            <tr
+              key={r.date}
+              className={classNames(
+                isWeekendDate(r.date) ? 'bg-gray-50/60 dark:bg-gray-900/20' : '',
+                isToday ? 'ring-1 ring-inset ring-primary-300 dark:ring-primary-700 bg-primary-50/50 dark:bg-primary-900/10' : ''
+              )}
+            >
+              <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">
+                <span className={isToday ? 'font-semibold text-primary-700 dark:text-primary-400' : ''}>{r.date}</span>
+                <span className="text-gray-400 ml-1.5">{weekdayOf(r.date)}</span>
+                {isToday && <span className="badge bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 ml-1.5">Today</span>}
+              </td>
+              <td className="px-3 py-2.5"><StatusBadge status={r.status} /></td>
+              <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400">{r.firstIn || '—'}</td>
+              <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400">{r.lastOut || '—'}</td>
+              <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400 font-medium">{r.workingHours}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   </div>
@@ -65,29 +101,32 @@ const DayWiseTable = ({ entries }) => (
     <table className="w-full text-xs">
       <thead className="bg-gray-50 dark:bg-gray-700/50">
         <tr>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Employee</th>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Department</th>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">First In</th>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Last Out</th>
-          <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Working Hours</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">Employee</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">Department</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">Status</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">First In</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">Last Out</th>
+          <th className="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-400">Working Hours</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
         {entries.map(({ member, row }) => (
-          <tr key={member._id}>
-            <td className="px-3 py-2 text-gray-800 dark:text-gray-200 font-medium">{member.name}</td>
-            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{member.department || '—'}</td>
-            <td className="px-3 py-2">
-              {row ? (
-                <span className={`badge ${styleFor(row.status)}`}>{row.status}</span>
-              ) : (
-                <span className="text-gray-400">Not found in Zoho People</span>
+          <tr key={member._id} className="hover:bg-gray-50/60 dark:hover:bg-gray-700/20 transition-colors">
+            <td className="px-3 py-2.5">
+              <div className="flex items-center gap-2.5">
+                <Avatar name={member.name} />
+                <span className="text-gray-800 dark:text-gray-200 font-medium">{member.name}</span>
+              </div>
+            </td>
+            <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400">{member.department || '—'}</td>
+            <td className="px-3 py-2.5">
+              {row ? <StatusBadge status={row.status} /> : (
+                <span className="text-gray-400 italic">Not in Zoho People</span>
               )}
             </td>
-            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{row?.firstIn || '—'}</td>
-            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{row?.lastOut || '—'}</td>
-            <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{row?.workingHours || '—'}</td>
+            <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400">{row?.firstIn || '—'}</td>
+            <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400">{row?.lastOut || '—'}</td>
+            <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400 font-medium">{row?.workingHours || '—'}</td>
           </tr>
         ))}
       </tbody>
@@ -95,32 +134,67 @@ const DayWiseTable = ({ entries }) => (
   </div>
 );
 
+const StatTile = ({ status, count }) => {
+  const { icon: Icon, tile } = metaFor(status);
+  return (
+    <div className="card p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{status}</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{count}</p>
+        </div>
+        <div className={`p-2.5 rounded-xl ${tile}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SummaryTiles = ({ rows }) => {
   const s = summarize(rows);
-  const statuses = Object.keys(s).sort((a, b) => (a === 'Present' ? -1 : b === 'Present' ? 1 : 0));
+  const statuses = sortStatuses(Object.keys(s));
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-lg mb-4">
-      {statuses.map((k) => (
-        <div key={k} className="card p-3 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">{k}</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">{s[k]}</p>
-        </div>
-      ))}
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+      {statuses.map((k) => <StatTile key={k} status={k} count={s[k]} />)}
     </div>
   );
 };
 
 const TeamSummaryBadges = ({ rows }) => {
   const s = summarize(rows);
-  const statuses = Object.keys(s).sort((a, b) => (a === 'Present' ? -1 : b === 'Present' ? 1 : 0));
+  const statuses = sortStatuses(Object.keys(s));
   return (
-    <div className="flex items-center gap-2 text-xs flex-wrap justify-end">
+    <div className="flex items-center gap-1.5 flex-wrap justify-end">
       {statuses.map((k) => (
-        <span key={k} className={`badge ${styleFor(k)}`}>{s[k]} {k}</span>
+        <span key={k} className={`badge gap-1 ${metaFor(k).badge}`}>{s[k]} {k}</span>
       ))}
     </div>
   );
 };
+
+const ViewToggle = ({ viewMode, setViewMode }) => (
+  <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-sm shadow-sm">
+    {[
+      { mode: 'monthly', label: 'Monthly', Icon: CalendarRange },
+      { mode: 'daily', label: 'Daily', Icon: CalendarDays },
+    ].map(({ mode, label, Icon }) => (
+      <button
+        key={mode}
+        onClick={() => setViewMode(mode)}
+        className={classNames(
+          'px-3 py-1.5 flex items-center gap-1.5 font-medium transition-colors',
+          viewMode === mode
+            ? 'bg-primary-600 text-white'
+            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+        )}
+      >
+        <Icon className="w-3.5 h-3.5" />
+        {label}
+      </button>
+    ))}
+  </div>
+);
 
 const Attendance = () => {
   const { user } = useAuth();
@@ -173,6 +247,10 @@ const Attendance = () => {
       }));
   }, [members, employeeSearch, selectedDate]);
 
+  const dayWiseSummary = useMemo(() => summarize(
+    dayWiseEntries.filter((e) => e.row).map((e) => e.row)
+  ), [dayWiseEntries]);
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
@@ -183,23 +261,7 @@ const Attendance = () => {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          {isTeamView && (
-            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
-              {['monthly', 'daily'].map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`px-3 py-1.5 capitalize transition-colors ${
-                    viewMode === mode
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-          )}
+          {isTeamView && <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />}
           {isTeamView && viewMode === 'daily' ? (
             <input
               type="date"
@@ -222,15 +284,24 @@ const Attendance = () => {
       </div>
 
       {isTeamView && viewMode === 'daily' && !loading && (
-        <div className="relative max-w-xs">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Filter by employee name…"
-            className="input-field pl-9 text-sm"
-            value={employeeSearch}
-            onChange={(e) => setEmployeeSearch(e.target.value)}
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+          <div className="relative max-w-xs w-full">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Filter by employee name…"
+              className="input-field pl-9 text-sm"
+              value={employeeSearch}
+              onChange={(e) => setEmployeeSearch(e.target.value)}
+            />
+          </div>
+          {Object.keys(dayWiseSummary).length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {sortStatuses(Object.keys(dayWiseSummary)).map((k) => (
+                <span key={k} className={`badge gap-1 ${metaFor(k).badge}`}>{dayWiseSummary[k]} {k}</span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -261,15 +332,23 @@ const Attendance = () => {
                     onClick={() => memberLinked && setExpandedId(isOpen ? null : m._id)}
                     className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                   >
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">{m.name}</p>
-                      <p className="text-xs text-gray-400">{m.employeeId} {m.department ? `· ${m.department}` : ''}</p>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar name={m.name} />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900 dark:text-white truncate">{m.name}</p>
+                        <p className="text-xs text-gray-400 truncate">{m.employeeId} {m.department ? `· ${m.department}` : ''}</p>
+                      </div>
                     </div>
-                    {memberLinked ? (
-                      <TeamSummaryBadges rows={rows} />
-                    ) : (
-                      <span className="text-xs text-gray-400">Not found in Zoho People</span>
-                    )}
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      {memberLinked ? (
+                        <TeamSummaryBadges rows={rows} />
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">Not in Zoho People</span>
+                      )}
+                      {memberLinked && (
+                        <ChevronDown className={classNames('w-4 h-4 text-gray-400 transition-transform', isOpen ? 'rotate-180' : '')} />
+                      )}
+                    </div>
                   </button>
                   {isOpen && memberLinked && (
                     <div className="border-t border-gray-100 dark:border-gray-700 p-4">
